@@ -23,7 +23,7 @@ A modern, full-featured e-commerce platform built with **Vue 3**, **Express**, a
 
 ```
 +-----------------------+       +-----------------------+       +-----------------------+
-|   Frontend (Vue 3)    |       |   Backend (Express)   |       |     PostgreSQL 16     |
+|   Frontend (Vue 3)    |       |   Backend (Express)   |       |     PostgreSQL 18     |
 |    Port 3001 (dev)    | ----> |      Port 5001        | ----> |       Port 5432       |
 |   Port 80 (Docker)    |       |  Helmet + Compression |       |                       |
 +-----------------------+       +-----------------------+       +-----------------------+
@@ -134,7 +134,7 @@ aliee-shop/
 
 - **Node.js** >= 22 (local development)
 - **npm** >= 10
-- **PostgreSQL** >= 16 (local dev, or use Docker)
+- **PostgreSQL** >= 18 (local dev, or use Docker)
 - **Docker Desktop** >= 24 (for containerized deployment)
 - **Git**
 
@@ -336,6 +336,10 @@ done
 | add_cash_on_delivery.sql | Cash on delivery payment method |
 | add_cod_fee_column.sql | COD fee column |
 | add_low_stock_view.sql | Low stock monitoring view |
+| add_notifications.sql | Dashboard notifications and audit log |
+| add_product_tags.sql | Product tags |
+| add_reviews_table.sql | Product reviews |
+| add_role_permissions.sql | Roles, permissions, and role assignments |
 | add_store_settings.sql | Store configuration table |
 | add_variant_price.sql | Product variant pricing |
 | add_wishlist_table.sql | Wishlist feature |

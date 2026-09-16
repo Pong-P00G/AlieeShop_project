@@ -80,7 +80,7 @@ watch(() => authStore.initialized, (val) => {
         <!-- ── Auth Loading Overlay ──────────────────────────── -->
         <Transition name="auth-loading">
             <div v-if="!authStore.initialized"
-                class="fixed inset-0 z-[100] flex flex-col items-center justify-center bg-white">
+                class="fixed inset-0 z-100 flex flex-col items-center justify-center bg-white">
                 <div class="flex flex-col items-center gap-6">
                     <!-- Logo -->
                     <div class="w-16 h-16 rounded-2xl bg-zinc-900 flex items-center justify-center">

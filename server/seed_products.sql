@@ -41,6 +41,8 @@ CROSS JOIN LATERAL (VALUES
     ('Size',    'M'),
     ('Size',    'L'),
     ('Size',    'XL'),
+    ('Size',    '32'),
+    ('Size',    '34'),
     ('Size',    'US 9'),
     ('Size',    'US 10'),
     ('Size',    'US 11'),
@@ -90,10 +92,10 @@ BEGIN
     -- --------------------------------------------------------
     -- Product 1: iPhone 15 Pro
     -- --------------------------------------------------------
-    INSERT INTO products (categoriesId, productname, baseprice, description, status)
+    INSERT INTO products (categoriesId, productname, baseprice, description, status, tags)
     VALUES (cat_smartphones_id, 'iPhone 15 Pro', 999.00,
             'Apple iPhone 15 Pro with titanium design, A17 Pro chip, and pro camera system.',
-            'active')
+            'active', ARRAY['best_seller', 'premium'])
     ON CONFLICT DO NOTHING
     RETURNING productsId INTO prod1_id;
 
@@ -140,10 +142,10 @@ BEGIN
     -- --------------------------------------------------------
     -- Product 2: Nike Air Max
     -- --------------------------------------------------------
-    INSERT INTO products (categoriesId, productname, baseprice, description, status)
+    INSERT INTO products (categoriesId, productname, baseprice, description, status, tags)
     VALUES (cat_footwear_id, 'Nike Air Max', 129.99,
             'Classic Nike Air Max sneakers with visible Air cushioning.',
-            'active')
+            'active', ARRAY['best_seller'])
     ON CONFLICT DO NOTHING
     RETURNING productsId INTO prod2_id;
 
@@ -172,10 +174,10 @@ BEGIN
     -- --------------------------------------------------------
     -- Product 3: Levi's 501 Jeans
     -- --------------------------------------------------------
-    INSERT INTO products (categoriesId, productname, baseprice, description, status)
+    INSERT INTO products (categoriesId, productname, baseprice, description, status, tags)
     VALUES (cat_mens_id, 'Levi''s 501 Original Jeans', 79.50,
             'Iconic straight fit jeans with button fly.',
-            'active')
+            'active', ARRAY['best_seller'])
     ON CONFLICT DO NOTHING
     RETURNING productsId INTO prod3_id;
 
@@ -204,10 +206,10 @@ BEGIN
     -- --------------------------------------------------------
     -- Product 4: Sony WH-1000XM5
     -- --------------------------------------------------------
-    INSERT INTO products (categoriesId, productname, baseprice, description, status)
+    INSERT INTO products (categoriesId, productname, baseprice, description, status, tags)
     VALUES (cat_audio_id, 'Sony WH-1000XM5', 348.00,
             'Industry-leading noise canceling wireless headphones.',
-            'active')
+            'active', ARRAY['premium'])
     ON CONFLICT DO NOTHING
     RETURNING productsId INTO prod4_id;
 
@@ -232,10 +234,10 @@ BEGIN
     -- --------------------------------------------------------
     -- Product 5: Organic Green Tea (no variants)
     -- --------------------------------------------------------
-    INSERT INTO products (categoriesId, productname, baseprice, description, status)
+    INSERT INTO products (categoriesId, productname, baseprice, description, status, tags)
     VALUES (cat_food_id, 'Organic Green Tea - 20 Bags', 12.99,
             'Premium organic green tea, 20 tea bags per box.',
-            'active')
+            'active', ARRAY['new_arrival'])
     ON CONFLICT DO NOTHING
     RETURNING productsId INTO prod5_id;
 
@@ -338,7 +340,50 @@ BEGIN
 END $$;
 
 -- ============================================================
--- 5. Clean up helper function
+-- 5. Seed default permissions and role assignments
+-- ============================================================
+INSERT INTO permissions (permission_key, permission_name, module, description, type)
+VALUES
+    ('pages.dashboard', 'Dashboard Page', 'pages', 'Access the admin dashboard page', 'frontend'),
+    ('pages.products', 'Products Page', 'pages', 'View products listing and details page', 'frontend'),
+    ('pages.orders', 'Orders Page', 'pages', 'View orders management page', 'frontend'),
+    ('pages.users', 'Users Page', 'pages', 'View user management page', 'frontend'),
+    ('pages.roles', 'Roles Page', 'pages', 'View roles and permissions page', 'frontend'),
+    ('pages.settings', 'Settings Page', 'pages', 'Access store settings page', 'frontend'),
+    ('dashboard.view', 'View Dashboard', 'dashboard', 'Access the admin dashboard', 'backend'),
+    ('products.read', 'View Products', 'products', 'View product catalog', 'backend'),
+    ('products.create', 'Create Products', 'products', 'Add new products', 'backend'),
+    ('products.update', 'Edit Products', 'products', 'Modify existing products', 'backend'),
+    ('products.delete', 'Delete Products', 'products', 'Remove products', 'backend'),
+    ('orders.read', 'View Orders', 'orders', 'View order details', 'backend'),
+    ('users.read', 'View Users', 'users', 'View user list and details', 'backend'),
+    ('roles.view', 'View Roles', 'roles', 'View role configurations', 'backend'),
+    ('roles.manage', 'Manage Roles', 'roles', 'Create, edit, and assign roles and permissions', 'backend'),
+    ('settings.view', 'View Settings', 'settings', 'Access store settings', 'backend'),
+    ('settings.manage', 'Manage Settings', 'settings', 'Modify store configuration', 'backend')
+ON CONFLICT (permission_key) DO UPDATE SET
+    permission_name = EXCLUDED.permission_name,
+    module = EXCLUDED.module,
+    description = EXCLUDED.description,
+    type = EXCLUDED.type;
+
+INSERT INTO role_permissions (role_id, permission_id)
+SELECT r.rolesid, p.permission_id
+FROM roles r
+CROSS JOIN permissions p
+WHERE r.rolesid = 1
+ON CONFLICT DO NOTHING;
+
+INSERT INTO role_permissions (role_id, permission_id)
+SELECT r.rolesid, p.permission_id
+FROM roles r
+CROSS JOIN permissions p
+WHERE r.rolesid = 2
+  AND p.permission_key NOT IN ('roles.manage', 'settings.manage')
+ON CONFLICT DO NOTHING;
+
+-- ============================================================
+-- 6. Clean up helper function
 -- ============================================================
 DROP FUNCTION IF EXISTS get_value_id(TEXT, TEXT);
 
