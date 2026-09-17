@@ -21,6 +21,7 @@ import {
 import { useAuthStore } from '../stores/auth.js';
 import { useShopStore } from '../stores/shop.js';
 import { useUIStore } from '../stores/ui.js';
+import { useNotificationStore } from '../stores/notifications.js';
 import ThemeToggle from './ThemeToggle.vue';
 
 const route = useRoute();
@@ -28,52 +29,34 @@ const router = useRouter();
 const authStore = useAuthStore();
 const shop = useShopStore();
 const ui = useUIStore();
+const notificationStore = useNotificationStore();
 const isMenuOpen = ref(false);
 const scrolled = ref(false);
 const isDropdownOpen = ref(false);
 
-// Notification bell state
+// Notification bell state (the list itself lives in the notifications store)
 const showNotifications = ref(false);
-const notifications = ref([]);
-const unreadCount = ref(0);
-const notifLoading = ref(false);
 
 const cartCount = computed(() => shop.cartCount || 0);
 
-const fetchNotifications = async () => {
-    if (!isAuthenticated.value) return;
-    try {
-        const { default: api } = await import('../api/api.js');
-        const isAdmin = Number(authStore.user?.role_id) <= 2;
-        const endpoint = isAdmin
-            ? '/dashboard/notifications?limit=5'
-            : '/notifications/recent?limit=5';
-        const { data } = await api.get(endpoint);
-        if (data.success) {
-            notifications.value = data.data?.notifications || [];
-            unreadCount.value = data.data?.unreadCount || 0;
-        }
-    } catch (err) {
-        // Notifications unavailable - show empty state
-        if (err.response?.status !== 403 && err.response?.status !== 401) {
-            console.debug('Notifications unavailable');
-        }
-    }
-};
+// Badge state is owned by the notifications store so every surface (both bells
+// and both notification pages) and every tab agree on the unread count.
+const notifications = computed(() => notificationStore.recent);
+const unreadCount = computed(() => notificationStore.unreadCount);
+const allNotificationsLink = computed(() => notificationStore.endpoints().all);
 
-const markRead = async (id) => {
-    try {
-        const { default: api } = await import('../api/api.js');
-        await api.put(`/dashboard/notifications/${id}/read`);
-        const n = notifications.value.find(n => n.id === id);
-        if (n) { n.is_read = true; unreadCount.value = Math.max(0, unreadCount.value - 1); }
-    } catch { /* silent */ }
-};
+const markRead = (id) => notificationStore.markRead(id);
+
+// Clear the badge as soon as the session ends (broadcasts to the other tabs)
+watch(() => authStore.isAuthenticated, (isAuthed) => {
+    if (!isAuthed) notificationStore.reset();
+});
 
 const toggleNotifications = () => {
     showNotifications.value = !showNotifications.value;
     if (showNotifications.value && isAuthenticated.value) {
-        fetchNotifications();
+        // Refresh on open so the dropdown never shows a stale list
+        notificationStore.refresh();
     }
 };
 
@@ -86,19 +69,18 @@ const timeAgo = (dateStr) => {
     return Math.floor(diff / 86400) + 'd ago';
 };
 
-let notifInterval = null;
-
 onMounted(() => {
-    fetchNotifications();
-    // Poll every 60 seconds
-    notifInterval = setInterval(fetchNotifications, 60000);
+    // The store owns the 60s poll and the cross-tab channel (idempotent, so the
+    // dashboard layout can start it too)
+    notificationStore.start();
     document.addEventListener('keydown', handleKeydown);
     document.addEventListener('click', handleClickOutside);
     window.addEventListener('scroll', handleScroll);
 });
 
 onUnmounted(() => {
-    if (notifInterval) clearInterval(notifInterval);
+    // Note: the store's poll is intentionally left running — it is app-lifetime
+    // so the badge keeps updating on pages that do not render a navbar.
     document.removeEventListener('keydown', handleKeydown);
     document.removeEventListener('click', handleClickOutside);
     window.removeEventListener('scroll', handleScroll);
@@ -295,7 +277,7 @@ watch(route, () => {
                                     </div>
                                 </div>
                                 <div class="px-4 py-2 border-t border-neutral-100 text-center">
-                                    <router-link to="/notifications" @click="showNotifications = false" class="text-xs text-accent font-medium hover:underline">
+                                    <router-link :to="allNotificationsLink" @click="showNotifications = false" class="text-xs text-accent font-medium hover:underline">
                                         View all
                                     </router-link>
                                 </div>

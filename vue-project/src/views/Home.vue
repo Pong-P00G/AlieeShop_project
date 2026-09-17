@@ -1,6 +1,6 @@
 <script setup>
 import { ref, computed, onMounted } from 'vue';
-import { RouterLink } from 'vue-router';
+import { RouterLink, useRouter } from 'vue-router';
 import {
     ArrowRight,
     Sparkles,
@@ -28,13 +28,16 @@ import {
 } from 'lucide-vue-next';
 import { useToast } from '../composables/useToast.js';
 import { useProductStore } from '../stores/product.js';
+import { productAPI } from '../api/products/productApi.js';
 import LazyImage from '../components/LazyImage.vue';
+import WishListBtn from '../components/WishListBtn.vue';
 import ProductCarousel from '../components/ProductCarousel.vue';
 import HeroCarousel from '../components/HeroCarousel.vue';
 import TabbedProductCarousel from '../components/TabbedProductCarousel.vue';
 import ProductBadge from '../components/ProductBadge.vue';
 
 const toast = useToast();
+const router = useRouter();
 const productStore = useProductStore();
 
 const loadingProducts = ref(false);
@@ -231,8 +234,33 @@ function prevPage() {
     if (page.value > 1) page.value--;
 }
 
-function addToCart(p) {
-    toast.success('"' + p.name + '" added to cart!');
+/**
+ * Quick-add from a product card. Products with variants are redirected to
+ * the detail page instead — a variantless line would fail stock checks at
+ * checkout (or drain the wrong stock bucket), so force an explicit choice.
+ */
+async function addToCart(p) {
+    try {
+        const res = await productAPI.getProductById(p.id);
+        if (res?.success && Array.isArray(res.data?.variants) && res.data.variants.length > 0) {
+            toast.info('Choose an option first');
+            router.push('/product/' + p.id);
+            return;
+        }
+        shop.addToCart({
+            id: p.id,
+            title: p.name,
+            price: p.price,
+            qty: 1,
+            image: p.image,
+            variant: null,
+            variantId: null,
+        });
+        toast.success('"' + p.name + '" added to cart!');
+    } catch (err) {
+        console.error('Quick add failed:', err);
+        toast.error('Could not add this product — please open its page');
+    }
 }
 
 const promises = [
@@ -607,20 +635,26 @@ const carouselSections = computed(() => [
                                         :tooltip="p.badgeTooltip"
                                         class="absolute top-3 left-3 z-10"
                                     />
-                                    <div class="absolute top-3 right-3 flex flex-col gap-2 opacity-0 group-hover/card:opacity-100 translate-y-1 group-hover/card:translate-y-0 transition-all duration-300">
-                                        <button
-                                            class="w-9 h-9 rounded-full bg-paper text-ink flex items-center justify-center hover:bg-accent hover:text-white transition-colors shadow-md"
-                                            @click.prevent
-                                        >
-                                            <Heart class="w-4 h-4" />
-                                        </button>
-                                        <button
-                                            class="w-9 h-9 rounded-full bg-paper text-ink flex items-center justify-center hover:bg-ink hover:text-paper transition-colors shadow-md"
-                                            @click.prevent="addToCart(p)"
-                                        >
-                                            <Plus class="w-4 h-4" />
-                                        </button>
+                                    <!-- Wishlist heart: always visible — hover can't be relied on
+                                         for touch devices, and a saved state should be seen at a
+                                         glance. Kept outside the RouterLink so the click never
+                                         triggers navigation. -->
+                                    <div class="absolute top-3 right-3 z-10">
+                                        <WishListBtn
+                                            :item="{ id: p.id, name: p.name, price: p.price, image: p.image, category: p.category }"
+                                            size="sm"
+                                            class="shadow-md"
+                                            @added="toast.success('Added to wishlist!')"
+                                            @removed="toast.success('Removed from wishlist')"
+                                        />
                                     </div>
+                                    <!-- Quick add: desktop hover reveal only -->
+                                    <button
+                                        class="absolute top-14 right-3 z-10 w-9 h-9 rounded-full bg-paper text-ink flex items-center justify-center hover:bg-ink hover:text-paper transition-all shadow-md opacity-0 group-hover/card:opacity-100 translate-y-1 group-hover/card:translate-y-0 duration-300"
+                                        @click.prevent="addToCart(p)"
+                                    >
+                                        <Plus class="w-4 h-4" />
+                                    </button>
                                 </div>
                                 <div class="p-5">
                                     <p class="text-[10px] font-bold uppercase tracking-[0.2em] text-accent">{{ p.category }}</p>

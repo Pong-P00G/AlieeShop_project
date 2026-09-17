@@ -1,6 +1,7 @@
 <script setup>
 import { ref, computed, onMounted } from 'vue';
 import { userAPI } from '../../api/userApi';
+import { roleAPI } from '../../api/roleApi';
 import { useToast } from '../../composables/useToast.js';
 import RolePermissionManager from '../../components/RolePermissionManager.vue';
 import {
@@ -15,6 +16,8 @@ import {
     Trash2,
     Pencil,
     X,
+    Eye,
+    EyeOff,
 } from 'lucide-vue-next';
 
 const toast = useToast();
@@ -34,6 +37,8 @@ const isEditMode = ref(false);
 const showDeleteConfirm = ref(false);
 const userToDelete = ref(null);
 const deletingId = ref(null);
+const showPassword = ref(false);
+const clientErrors = ref({});
 
 const newUser = ref({
   username: '',
@@ -47,6 +52,36 @@ const newUser = ref({
 
 // Roles (shared with RolePermissionManager)
 const roles = ref([]);
+
+// Load roles for the form's role selector. RolePermissionManager only emits its
+// list after the Roles tab has been visited, so fetch independently on mount —
+// otherwise the Add User modal starts with an empty role dropdown.
+const fetchRoles = async () => {
+  try {
+    const list = await roleAPI.getAllRoles();
+    if (Array.isArray(list) && list.length) roles.value = list;
+  } catch (err) {
+    console.warn('Could not load roles for the user form:', err?.message);
+  }
+};
+
+// Mirror the server's rules (validationMiddleWare.js) so obvious mistakes are
+// caught locally instead of surfacing as a failed POST.
+const validateForm = () => {
+  const errors = {};
+  const u = newUser.value;
+  if (!/^[a-zA-Z0-9]{4,30}$/.test(u.username || '')) {
+    errors.username = '4-30 characters, letters and numbers only';
+  }
+  if (!u.first_name || u.first_name.trim().length < 2) errors.first_name = 'At least 2 characters';
+  if (!u.last_name || u.last_name.trim().length < 2) errors.last_name = 'At least 2 characters';
+  if (!/^\S+@\S+\.\S+$/.test(u.email || '')) errors.email = 'Enter a valid email address';
+  if (!isEditMode.value && (!u.password || u.password.length < 8 || u.password.length > 30)) {
+    errors.password = 'Must be 8-30 characters';
+  }
+  clientErrors.value = errors;
+  return Object.keys(errors).length === 0;
+};
 
 const onRolesUpdated = (updatedRoles) => {
     roles.value = updatedRoles;
@@ -124,13 +159,15 @@ const savingLabel = computed(() => isEditMode.value ? 'Updating...' : 'Creating.
 // Methods
 const openCreateModal = () => {
   isEditMode.value = false;
+  clientErrors.value = {};
+  showPassword.value = false;
   newUser.value = {
     username: '',
     first_name: '',
     last_name: '',
     email: '',
     password: '',
-    role_id: 3,
+    role_id: roles.value.find(r => Number(r.role_id) === 3)?.role_id ?? roles.value[0]?.role_id ?? 3,
     status: 'active'
   };
   showUserModal.value = true;
@@ -138,6 +175,8 @@ const openCreateModal = () => {
 
 const openEditModal = (user) => {
   isEditMode.value = true;
+  clientErrors.value = {};
+  showPassword.value = false;
   selectedUser.value = user;
   newUser.value = {
     username: user.username,
@@ -158,6 +197,7 @@ const closeModal = () => {
 };
 
 const saveUser = async () => {
+  if (!validateForm()) return;
   try {
     saving.value = true;
 
@@ -230,6 +270,7 @@ const formatDate = (dateString) => {
 
 onMounted(() => {
   fetchUsers();
+  fetchRoles();
 });
 
 
@@ -483,69 +524,99 @@ onMounted(() => {
     <!-- User Modal (Create/Edit) -->
     <div v-if="showUserModal" @click="closeModal"
       class="fixed inset-0 bg-ink/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-      <div @click.stop class="card-flat p-5 sm:p-8 max-w-md w-full max-h-[90vh] overflow-y-auto animate-[scale-in_0.25s_ease-out]">
-        <div class="flex items-center justify-between mb-6">
-          <h3 class="text-xl font-bold text-ink">
-            {{ isEditMode ? 'Edit User' : 'Add New User' }}
-          </h3>
-          <button @click="closeModal" class="btn-ghost p-1.5 -mr-1.5">
+      <div @click.stop
+        class="card-flat w-full max-w-lg max-h-[90vh] flex flex-col animate-[scale-in_0.25s_ease-out]">
+        <!-- Modal header -->
+        <div class="flex items-start justify-between gap-4 px-5 sm:px-8 pt-6 pb-4 border-b border-neutral-100">
+          <div>
+            <h3 class="text-xl font-bold text-ink">
+              {{ isEditMode ? 'Edit User' : 'Add New User' }}
+            </h3>
+            <p class="text-xs text-neutral-500 mt-1">
+              {{ isEditMode ? 'Update the account details below.' : 'Create an account and assign its role.' }}
+            </p>
+          </div>
+          <button @click="closeModal" class="btn-ghost p-1.5 -mr-1.5 shrink-0" aria-label="Close dialog">
             <X class="w-5 h-5" />
           </button>
         </div>
 
-        <form @submit.prevent="saveUser" class="space-y-4">
-          <!-- First Name -->
-          <div>
-            <label class="block text-xs font-bold uppercase tracking-[0.15em] text-ink mb-2">First Name</label>
-            <input v-model="newUser.first_name" type="text" required class="input-base" placeholder="John" />
+        <!-- Scrollable body -->
+        <form @submit.prevent="saveUser" class="overflow-y-auto px-5 sm:px-8 py-6 space-y-5">
+          <!-- Name row -->
+          <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <div>
+              <label class="block text-xs font-bold uppercase tracking-[0.15em] text-ink mb-2">First Name *</label>
+              <input v-model="newUser.first_name" type="text" required class="input-base" placeholder="John"
+                :class="{ 'border-danger': clientErrors.first_name }" />
+              <p v-if="clientErrors.first_name" class="text-[11px] text-danger mt-1">{{ clientErrors.first_name }}</p>
+            </div>
+            <div>
+              <label class="block text-xs font-bold uppercase tracking-[0.15em] text-ink mb-2">Last Name *</label>
+              <input v-model="newUser.last_name" type="text" required class="input-base" placeholder="Doe"
+                :class="{ 'border-danger': clientErrors.last_name }" />
+              <p v-if="clientErrors.last_name" class="text-[11px] text-danger mt-1">{{ clientErrors.last_name }}</p>
+            </div>
           </div>
 
-          <!-- Last Name -->
-          <div>
-            <label class="block text-xs font-bold uppercase tracking-[0.15em] text-ink mb-2">Last Name</label>
-            <input v-model="newUser.last_name" type="text" required class="input-base" placeholder="Doe" />
-          </div>
-
-          <!-- Username -->
-          <div>
-            <label class="block text-xs font-bold uppercase tracking-[0.15em] text-ink mb-2">Username</label>
-            <input v-model="newUser.username" type="text" required class="input-base" placeholder="johndoe" />
-          </div>
-
-          <!-- Email -->
-          <div>
-            <label class="block text-xs font-bold uppercase tracking-[0.15em] text-ink mb-2">Email</label>
-            <input v-model="newUser.email" type="email" required class="input-base" placeholder="john@example.com" />
+          <!-- Username + Email row -->
+          <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <div>
+              <label class="block text-xs font-bold uppercase tracking-[0.15em] text-ink mb-2">Username *</label>
+              <input v-model="newUser.username" type="text" required class="input-base" placeholder="johndoe"
+                :class="{ 'border-danger': clientErrors.username }" />
+              <p v-if="clientErrors.username" class="text-[11px] text-danger mt-1">{{ clientErrors.username }}</p>
+              <p v-else class="text-[10px] text-neutral-400 mt-1">Letters and numbers only, 4-30 characters. Also used to sign in.</p>
+            </div>
+            <div>
+              <label class="block text-xs font-bold uppercase tracking-[0.15em] text-ink mb-2">Email *</label>
+              <input v-model="newUser.email" type="email" required class="input-base" placeholder="john@example.com"
+                :class="{ 'border-danger': clientErrors.email }" />
+              <p v-if="clientErrors.email" class="text-[11px] text-danger mt-1">{{ clientErrors.email }}</p>
+            </div>
           </div>
 
           <!-- Password (only for create) -->
           <div v-if="!isEditMode">
-            <label class="block text-xs font-bold uppercase tracking-[0.15em] text-ink mb-2">Password</label>
-            <input v-model="newUser.password" type="password" required class="input-base" placeholder="••••••••" />
+            <label class="block text-xs font-bold uppercase tracking-[0.15em] text-ink mb-2">Password *</label>
+            <div class="relative">
+              <input v-model="newUser.password" :type="showPassword ? 'text' : 'password'" required
+                class="input-base pr-10" placeholder="••••••••" autocomplete="new-password"
+                :class="{ 'border-danger': clientErrors.password }" />
+              <button type="button" @click="showPassword = !showPassword"
+                class="absolute right-3 top-1/2 -translate-y-1/2 text-neutral-400 hover:text-ink"
+                :aria-label="showPassword ? 'Hide password' : 'Show password'">
+                <EyeOff v-if="showPassword" class="w-4 h-4" />
+                <Eye v-else class="w-4 h-4" />
+              </button>
+            </div>
+            <p v-if="clientErrors.password" class="text-[11px] text-danger mt-1">{{ clientErrors.password }}</p>
+            <p v-else class="text-[10px] text-neutral-400 mt-1">8-30 characters.</p>
           </div>
 
-          <!-- Role -->
-          <div>
-            <label class="block text-xs font-bold uppercase tracking-[0.15em] text-ink mb-2">Role</label>
-            <select v-model="newUser.role_id" class="input-base">
-              <option v-for="r in roles" :key="r.role_id" :value="r.role_id">
-                {{ r.role_name }} — {{ getRoleLevel(r).label }} ({{ getRoleLevel(r).level }})
-              </option>
-            </select>
-            <p class="text-[10px] text-neutral-400 mt-1">Assign a role to determine the user's permissions and level.</p>
-          </div>
-
-          <!-- Status -->
-          <div>
-            <label class="block text-xs font-bold uppercase tracking-[0.15em] text-ink mb-2">Status</label>
-            <select v-model="newUser.status" class="input-base">
-              <option value="active">Active</option>
-              <option value="inactive">Inactive</option>
-            </select>
+          <!-- Role + Status row -->
+          <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <div>
+              <label class="block text-xs font-bold uppercase tracking-[0.15em] text-ink mb-2">Role</label>
+              <select v-model="newUser.role_id" class="input-base">
+                <option v-if="roles.length === 0" :value="3">Customer — Level 3</option>
+                <option v-for="r in roles" :key="r.role_id" :value="r.role_id">
+                  {{ r.role_name }} — {{ getRoleLevel(r).label }}
+                </option>
+              </select>
+              <p class="text-[10px] text-neutral-400 mt-1">Determines the user's permissions and level.</p>
+            </div>
+            <div>
+              <label class="block text-xs font-bold uppercase tracking-[0.15em] text-ink mb-2">Status</label>
+              <select v-model="newUser.status" class="input-base">
+                <option value="active">Active</option>
+                <option value="inactive">Inactive</option>
+              </select>
+            </div>
           </div>
 
           <!-- Actions -->
-          <div class="flex gap-3 pt-4">
+          <div class="flex gap-3 pt-2 pb-1">
             <button type="button" @click="closeModal" class="btn-outline flex-1" :disabled="saving">
               Cancel
             </button>

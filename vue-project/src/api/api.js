@@ -23,21 +23,52 @@ api.interceptors.request.use(config => {
     return config;
 });
 
+// ── Silent access-token renewal ─────────────────────────────────────────────
+// The access token is short-lived (15 min by default, see server tokenService).
+// When it expires any protected call answers 401, so we exchange the httpOnly
+// refresh cookie for a new access token and replay the original request once.
+// Concurrent 401s share a single refresh request.
+let refreshPromise = null;
+
+const refreshAccessToken = () => {
+    if (!refreshPromise) {
+        refreshPromise = api
+            .post('/auth/refresh', null, { _skipAuthRefresh: true })
+            .then(() => true)
+            .catch(() => false)
+            .finally(() => { refreshPromise = null; });
+    }
+    return refreshPromise;
+};
+
+const isAuthPage = () => ['/login', '/register', '/forgotPassword', '/forgot-password']
+    .some(p => window.location.pathname.startsWith(p));
+
 // Handle response errors globally
 api.interceptors.response.use(
     (response) => response,
-    (error) => {
+    async (error) => {
+        const original = error.config || {};
+
         if (error.response?.status === 401) {
-            // Don't redirect if:
+            // Never retry or redirect when:
             // - The request itself is for /auth/login or /auth/register (expected 401 for bad creds)
-            // - We're already on an auth page (login, register, forgotPassword)
-            const requestUrl = error.config?.url || '';
+            // - The request is the refresh call itself (avoids an infinite loop)
+            // Redirects are additionally skipped while already on an auth page
+            const requestUrl = original.url || '';
             const isAuthRequest = requestUrl.includes('/auth/login') || requestUrl.includes('/auth/register');
-            const isOnAuthPage = ['/login', '/register', '/forgotPassword', '/forgot-password']
-                .some(p => window.location.pathname.startsWith(p));
-            
-            if (!isAuthRequest && !isOnAuthPage) {
-                // Session expired — cookie is invalid, redirect to login
+
+            if (!isAuthRequest && !original._skipAuthRefresh && !original._retriedAfterRefresh) {
+                // Access token expired — renew it and replay the request
+                const refreshed = await refreshAccessToken();
+                if (refreshed) {
+                    original._retriedAfterRefresh = true;
+                    return api(original);
+                }
+            }
+
+            if (!isAuthRequest && !isAuthPage() && !original._skipAuthRefresh) {
+                // Refresh token is gone or revoked — the session is over
                 window.location.href = '/login';
             }
         }

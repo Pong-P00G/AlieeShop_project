@@ -360,6 +360,20 @@ export const getPushSubscriptions = async (userId) => {
     return rows;
 };
 
+export const getAllPushSubscriptions = async () => {
+    const { rows } = await db.query('SELECT * FROM push_subscriptions');
+    return rows;
+};
+
+// Remove a subscription the push service reported as gone (HTTP 404/410)
+export const deletePushSubscriptionByEndpoint = async (endpoint) => {
+    const result = await db.query(
+        'DELETE FROM push_subscriptions WHERE endpoint = $1',
+        [endpoint]
+    );
+    return result.rowCount > 0;
+};
+
 export const getPushSubscriptionsByUserIds = async (userIds) => {
     if (!userIds || userIds.length === 0) return [];
     const { rows } = await db.query(

@@ -1,5 +1,6 @@
 import bcrypt from 'bcrypt';
 import * as UserModels from '../model/userModel.js';
+import * as RefreshTokenModel from '../model/refreshTokenModel.js';
 import { notifyNewUser } from './dashboardService.js';
 
 // Get all users
@@ -43,15 +44,59 @@ export const createUsers = async (userData) => {
     });
 };
 
+// Verify a plaintext password against the stored hash for an existing user.
+// Used before accepting a password change so a stolen access token alone cannot
+// be used to take over the account.
+export const verifyPassword = async (id, plainPassword) => {
+    if (!plainPassword) return false;
+
+    const user = await UserModels.getUserById(id);
+    if (!user?.password_hash) return false;
+
+    return bcrypt.compare(plainPassword, user.password_hash);
+};
+
 // Update User — hash password in app layer if changing
 export const updateUser = async (id, userData) => {
     const data = { ...userData };
+
+    // username and email are unique in the database. Check them up front so a
+    // duplicate returns a clear message instead of surfacing a raw constraint
+    // error, and skip the user's own row so re-submitting an unchanged value is
+    // not rejected as a collision with itself.
+    if (data.username !== undefined && data.username !== null) {
+        const owner = await UserModels.getUserByUsername(data.username);
+        if (owner && String(owner.user_id) !== String(id)) {
+            throw new Error('Username already taken');
+        }
+    }
+
+    if (data.email !== undefined && data.email !== null) {
+        const owner = await UserModels.getUserByEmail(data.email);
+        if (owner && String(owner.user_id) !== String(id)) {
+            throw new Error('Email already exists');
+        }
+    }
+
+    let passwordChanged = false;
     if (data.password || data.password_hash) {
         const plainPassword = data.password || data.password_hash;
         data.password_hash = await bcrypt.hash(plainPassword, 12);
         delete data.password;
+        passwordChanged = true;
     }
-    return await UserModels.updateUsers(id, data);
+
+    const updated = await UserModels.updateUsers(id, data);
+
+    // A password change invalidates every existing session for that user, so
+    // anyone holding a stolen refresh token is locked out immediately.
+    if (passwordChanged) {
+        await RefreshTokenModel.revokeAllUserRefreshTokens(id).catch((err) => {
+            console.error('Failed to revoke refresh tokens after password change:', err.message);
+        });
+    }
+
+    return updated;
 };
 
 // Delete User

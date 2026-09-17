@@ -18,7 +18,7 @@ const shop = useShopStore();
 const router = useRouter();
 const toast = useToast();
 
-// ── Profile state ────────────────────────────────────────────
+// Profile state
 const activeTab = ref('overview');
 const isEditing = ref(false);
 const isSaving = ref(false);
@@ -33,7 +33,7 @@ const profile = ref({
     joined: '2024',
 });
 
-// ── Orders state ─────────────────────────────────────────────
+// Orders state 
 const orders = ref([]);
 const ordersLoading = ref(false);
 const ordersError = ref(null);
@@ -64,7 +64,7 @@ const statusConfig = {
 const getStatusConfig = (status) =>
     statusConfig[status] || { label: status, color: 'bg-neutral-100 text-neutral-700', icon: Clock };
 
-// ── Fetch orders ─────────────────────────────────────────────
+// Fetch orders
 const fetchOrders = async () => {
     ordersLoading.value = true;
     ordersError.value = null;
@@ -107,7 +107,7 @@ const closeOrderDetail = () => {
     selectedOrder.value = null;
 };
 
-// ── Reorder ──────────────────────────────────────────────────
+// Reorder
 const reorderItem = async (item) => {
     // Look up product detail page
     router.push(`/product/${item.productId}`);
@@ -131,7 +131,7 @@ const reorderAll = async () => {
     closeOrderDetail();
 };
 
-// ── Profile helpers ──────────────────────────────────────────
+// Profile helpers
 const save = async () => {
     isSaving.value = true;
     await new Promise((r) => setTimeout(r, 700));
@@ -146,11 +146,17 @@ const logout = () => {
     router.push('/login');
 };
 
+// Revokes every session for this user, on every device
+const logoutEverywhere = async () => {
+    await authStore.logoutAll();
+    router.push('/login');
+};
+
 const initials = computed(() =>
     profile.value.name.split(' ').slice(0, 2).map((n) => n[0]).join('').toUpperCase()
 );
 
-// ── Date formatting ─────────────────────────────────────────
+// Date formatting
 const formatDate = (dateStr) => {
     if (!dateStr) return '';
     const d = new Date(dateStr);
@@ -213,6 +219,14 @@ onMounted(() => {
                         >
                             <LogOut class="w-4 h-4" />
                             Sign out
+                        </button>
+                        <button
+                            @click="logoutEverywhere"
+                            title="Signs you out on every device and invalidates all active sessions"
+                            class="inline-flex items-center gap-2 px-5 py-2.5 bg-transparent border border-neutral-700 text-paper font-bold text-sm rounded-full hover:bg-paper hover:text-ink transition-all"
+                        >
+                            <ShieldCheck class="w-4 h-4" />
+                            Sign out everywhere
                         </button>
                     </div>
                 </div>
@@ -478,7 +492,7 @@ onMounted(() => {
             <div
                 v-if="showDetailModal"
                 @click="closeOrderDetail"
-                class="fixed inset-0 z-[70] flex items-center justify-center p-4"
+                class="fixed inset-0 z-70 flex items-center justify-center p-4"
             >
                 <div class="absolute inset-0 bg-ink/50 backdrop-blur-sm"></div>
 

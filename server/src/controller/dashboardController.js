@@ -291,6 +291,16 @@ export const removePushSubscription = async (req, res) => {
 export const getVapidPublicKey = async (req, res) => {
     try {
         const key = dashboardService.getVapidPublicKey();
+
+        if (!key) {
+            // No placeholder key is ever returned — the browser must not be able
+            // to "subscribe" to a key that can never deliver anything.
+            return res.status(503).json({
+                success: false,
+                message: 'Web push is not configured on this server (VAPID keys are missing)',
+            });
+        }
+
         res.json({ success: true, data: { publicKey: key } });
     } catch (error) {
         res.status(500).json({ success: false, message: error.message });

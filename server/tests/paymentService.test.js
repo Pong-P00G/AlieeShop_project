@@ -105,6 +105,24 @@ describe('paymentService — createPaymentMethod', () => {
             method_name: 'PayPal',
             description: 'Fast checkout',
             is_active: true,
+            // fee defaults to 0 when the request omits it
+            fee: 0,
+        });
+    });
+
+    it('passes an explicit fee through to the model', async () => {
+        PaymentModel.createPaymentMethod.mockResolvedValue(mockPaymentMethod);
+
+        await paymentService.createPaymentMethod(
+            { method_name: 'Cash on Delivery', description: 'Pay at the door', is_active: true, fee: 2.5 },
+            1
+        );
+
+        expect(PaymentModel.createPaymentMethod).toHaveBeenCalledWith({
+            method_name: 'Cash on Delivery',
+            description: 'Pay at the door',
+            is_active: true,
+            fee: 2.5,
         });
     });
 

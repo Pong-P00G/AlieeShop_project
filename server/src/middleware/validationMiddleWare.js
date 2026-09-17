@@ -81,7 +81,10 @@ export const validateUpdate = (req, res, next) => {
         first_name: Joi.string().min(2).max(75).optional(),
         mid_name: Joi.string().max(75).allow(null, '').optional(),
         last_name: Joi.string().min(2).max(75).optional(),
-        role_id: Joi.number().integer().min(1).optional()
+        role_id: Joi.number().integer().min(1).optional(),
+        // Only consumed by the self-service profile endpoint, which verifies it
+        // before accepting a new password. Required there, optional here.
+        current_password: Joi.string().min(1).max(75).optional()
     }).min(1); // At least one field must be provided
     
     const { error } = schema.validate(req.body);

@@ -113,11 +113,14 @@ export const useShopStore = defineStore('shop', () => {
         try {
             // Clear backend cart first
             await cartAPI.clearCart()
-            // Add all items in parallel for efficiency
+            // Add all items in parallel for efficiency.
+            // variantId fallback: carts persisted before the field existed
+            // carry only the full `variant` object — pull the id from there
+            // so those lines still hit the right stock bucket server-side.
             await Promise.all(cart.value.map(item =>
                 cartAPI.addItem({
                     product_id: item.id,
-                    variant_id: item.variantId || null,
+                    variant_id: item.variantId ?? item.variant?.variant_id ?? null,
                     quantity: item.qty
                 })
             ))

@@ -1,6 +1,6 @@
 <script setup>
 import { ref, computed } from 'vue';
-import { useRouter, RouterLink } from 'vue-router';
+import { useRoute, useRouter, RouterLink } from 'vue-router';
 import { useAuthStore } from '../../stores/auth.js';
 import {
   Mail,
@@ -16,7 +16,12 @@ import {
 } from 'lucide-vue-next';
 
 const router = useRouter();
+const route = useRoute();
 const authStore = useAuthStore();
+
+// Set by the settings page after a password change, which signs out every
+// device including the one that made the change.
+const passwordChanged = computed(() => route.query.passwordChanged === '1');
 
 const identifier = ref('');
 const password = ref('');
@@ -88,6 +93,13 @@ const handleLogin = async () => {
 
       <!-- Card -->
       <div class="rounded-2xl bg-paper p-8 shadow-lg">
+        <!-- Password change confirmation -->
+        <div v-if="passwordChanged"
+          class="mb-6 flex items-start gap-2 rounded-lg bg-accent/10 px-4 py-3 text-sm text-accent">
+          <CheckCircle2 class="h-5 w-5 shrink-0 mt-0.5" />
+          <span>Your password was changed and you have been signed out on every device. Please sign in again.</span>
+        </div>
+
         <!-- Error -->
         <div v-if="error"
           class="mb-6 flex items-center gap-2 rounded-lg bg-danger/10 px-4 py-3 text-sm text-danger animate-shake">

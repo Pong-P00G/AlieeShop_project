@@ -1,5 +1,17 @@
-import { describe, it, expect } from 'vitest';
+import { describe, it, expect, vi, beforeEach } from 'vitest';
+
+// calculateRates reads the free_shipping_threshold store setting. Mock dbpool
+// so tests are deterministic whether or not a local Postgres is running.
+vi.mock('../src/database/dbpool.js', () => ({
+    default: { query: vi.fn(async () => ({ rows: [] })) },
+}));
+
+import db from '../src/database/dbpool.js';
 import * as shippingService from '../src/services/shippingService.js';
+
+beforeEach(() => {
+    db.query.mockClear();
+});
 
 // ═══════════════════════════════════════════════════════════════════════════════
 //  calculateRates
@@ -211,6 +223,57 @@ describe('shippingService — calculateRates', () => {
         await expect(
             shippingService.calculateRates({ subtotal: 50, country: 'US', state: 'CA' })
         ).rejects.toMatchObject({ status: 400, message: /zipCode/i });
+    });
+
+    it('uses the free_shipping_threshold store setting when present', async () => {
+        db.query.mockResolvedValueOnce({ rows: [{ setting_value: '20' }] });
+
+        const rates = await shippingService.calculateRates({
+            subtotal: 25, country: 'US', state: 'CA', zipCode: '90210',
+        });
+
+        // 25 >= 20 → free under the configured threshold (would be $5.99 at the default 50)
+        expect(rates.find(r => r.id === 'standard').price).toBe(0);
+    });
+
+    it('charges shipping when the configured threshold is not met', async () => {
+        db.query.mockResolvedValueOnce({ rows: [{ setting_value: '150' }] });
+
+        const rates = await shippingService.calculateRates({
+            subtotal: 100, country: 'US', state: 'CA', zipCode: '90210',
+        });
+
+        expect(rates.find(r => r.id === 'standard').price).toBe(5.99);
+    });
+
+    it('disables free shipping entirely when the threshold is 0', async () => {
+        db.query.mockResolvedValueOnce({ rows: [{ setting_value: '0' }] });
+
+        const rates = await shippingService.calculateRates({
+            subtotal: 500, country: 'US', state: 'CA', zipCode: '90210',
+        });
+
+        expect(rates.find(r => r.id === 'standard').price).toBe(5.99);
+    });
+
+    it('falls back to the 50 default when the setting row is missing', async () => {
+        db.query.mockResolvedValueOnce({ rows: [] });
+
+        const rates = await shippingService.calculateRates({
+            subtotal: 60, country: 'US', state: 'CA', zipCode: '90210',
+        });
+
+        expect(rates.find(r => r.id === 'standard').price).toBe(0);
+    });
+
+    it('falls back to the 50 default when the settings query fails', async () => {
+        db.query.mockRejectedValueOnce(new Error('settings table missing'));
+
+        const rates = await shippingService.calculateRates({
+            subtotal: 60, country: 'US', state: 'CA', zipCode: '90210',
+        });
+
+        expect(rates.find(r => r.id === 'standard').price).toBe(0);
     });
 });
 

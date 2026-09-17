@@ -39,6 +39,17 @@ export const authAPI = {
     }
   },
 
+  // Logout everywhere — revokes every refresh token for this user server-side
+  async logoutAll() {
+    try {
+      const { data } = await api.post('/auth/logout-all');
+      return data;
+    } catch (err) {
+      console.error('Logout all API error:', err);
+      throw err;
+    }
+  },
+
   // Get current user from server (via httpOnly cookie)
   async getMe() {
     try {

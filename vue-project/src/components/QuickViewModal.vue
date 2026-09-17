@@ -1,5 +1,6 @@
 <script setup>
 import { ref, computed } from 'vue'
+import { useRouter } from 'vue-router'
 import { X, ShoppingCart, Check, Heart, Star, Minus, Plus } from 'lucide-vue-next'
 import { useShopStore } from '../stores/shop.js'
 import { useToast } from '../composables/useToast.js'
@@ -14,6 +15,7 @@ const emit = defineEmits(['close'])
 
 const shop = useShopStore()
 const toast = useToast()
+const router = useRouter()
 const quantity = ref(1)
 const selectedImage = ref(0)
 const addingItem = ref(false)
@@ -27,12 +29,23 @@ const images = computed(() => {
 const addToCart = () => {
     if (addingItem.value) return
 
+    // Variant-tracked products need an explicit choice made on the detail
+    // page — a variantless cart line cannot be stock-checked properly.
+    if (props.product.variants?.length > 0) {
+        toast.info('Choose an option first')
+        close()
+        router.push('/product/' + props.product.id)
+        return
+    }
+
     shop.addToCart({
         id: props.product.id,
         title: props.product.name || props.product.product_name,
         price: parseFloat(props.product.price || props.product.base_price || 0),
         qty: quantity.value,
         image: props.product.image || props.product.thumbnail,
+        variant: null,
+        variantId: null,
     })
     toast.success('"' + (props.product.name || props.product.product_name) + '" added to cart')
 

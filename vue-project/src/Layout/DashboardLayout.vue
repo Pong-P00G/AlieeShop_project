@@ -2,6 +2,7 @@
 import { ref, computed, watch, onUnmounted, onMounted } from 'vue';
 import { useRouter, useRoute } from 'vue-router';
 import { useAuthStore } from '@/stores/auth.js';
+import { useNotificationStore } from '@/stores/notifications.js';
 import { dashboardAPI } from '@/api/dashboardApi.js';
 import {
     LayoutDashboard,
@@ -32,6 +33,7 @@ import {
 const router = useRouter();
 const route = useRoute();
 const authStore = useAuthStore();
+const notificationStore = useNotificationStore();
 
 const sidebarOpen = ref(true);
 const showUserMenu = ref(false);
@@ -120,7 +122,9 @@ const onSearchKeydown = (e) => {
 // ── Live Notifications ────────────────────────────────────────────────────────
 
 const notifications = ref([]);
-const unreadCount = ref(0);
+// The unread count lives in the notifications store so this bell, the public
+// navbar and every tab share one source of truth
+const unreadCount = computed(() => notificationStore.unreadCount);
 let notificationPoll = null;
 
 const notificationIconMap = {
@@ -136,7 +140,8 @@ const fetchNotifications = async () => {
         const response = await dashboardAPI.getNotifications(20);
         if (response.success) {
             notifications.value = response.data.notifications || [];
-            unreadCount.value = response.data.unreadCount || 0;
+            // Publish to the store so the navbar badge and other tabs follow
+            notificationStore.setCount(response.data.unreadCount || 0);
         }
     } catch (err) {
         console.error('Failed to fetch notifications:', err);
@@ -145,13 +150,9 @@ const fetchNotifications = async () => {
 
 const handleNotificationClick = async (notification) => {
     if (!notification.is_read) {
-        try {
-            await dashboardAPI.markNotificationRead(notification.id);
-            notification.is_read = true;
-            unreadCount.value = Math.max(0, unreadCount.value - 1);
-        } catch (err) {
-            console.error('Failed to mark notification as read:', err);
-        }
+        // Goes through the store: updates the badge everywhere and broadcast
+        await notificationStore.markRead(notification.id);
+        notification.is_read = true;
     }
     if (notification.link) {
         router.push(notification.link);
@@ -160,13 +161,8 @@ const handleNotificationClick = async (notification) => {
 };
 
 const handleMarkAllRead = async () => {
-    try {
-        await dashboardAPI.markAllNotificationsRead();
-        notifications.value.forEach(n => n.is_read = true);
-        unreadCount.value = 0;
-    } catch (err) {
-        console.error('Failed to mark all as read:', err);
-    }
+    await notificationStore.markAllRead();
+    notifications.value.forEach(n => n.is_read = true);
 };
 
 const formatNotificationTime = (createdAt) => {
@@ -180,6 +176,8 @@ const formatNotificationTime = (createdAt) => {
 };
 
 onMounted(() => {
+    // Shared badge state + cross-tab sync (idempotent — the navbar starts it too)
+    notificationStore.start();
     fetchNotifications();
     // Poll every 30 seconds
     notificationPoll = setInterval(fetchNotifications, 30000);
@@ -220,6 +218,13 @@ const visibleNavigation = computed(() => {
         return perms.some(p => authStore.hasPermission(p));
     });
 });
+
+// Avatar menu navigation. Close the dropdown first so it does not stay
+// open behind the destination page.
+const goTo = (name) => {
+    showUserMenu.value = false;
+    router.push({ name });
+};
 
 const logout = () => {
     authStore.logout();
@@ -590,11 +595,19 @@ const toggleSidebar = () => {
                                 class="absolute right-0 mt-2 w-[calc(100vw-2rem)] sm:w-56 max-w-sm card-flat shadow-xl z-50 overflow-hidden"
                             >
                                 <div class="p-2">
-                                    <button class="w-full flex items-center gap-3 px-4 py-2.5 text-sm font-medium text-ink hover:bg-neutral-100 rounded-lg transition-colors">
+                                    <button
+                                        type="button"
+                                        @click="goTo('userprofile')"
+                                        class="w-full flex items-center gap-3 px-4 py-2.5 text-sm font-medium text-ink hover:bg-neutral-100 rounded-lg transition-colors"
+                                    >
                                         <UserIcon class="w-4 h-4" />
                                         Profile
                                     </button>
-                                    <button class="w-full flex items-center gap-3 px-4 py-2.5 text-sm font-medium text-ink hover:bg-neutral-100 rounded-lg transition-colors">
+                                    <button
+                                        type="button"
+                                        @click="goTo('settings')"
+                                        class="w-full flex items-center gap-3 px-4 py-2.5 text-sm font-medium text-ink hover:bg-neutral-100 rounded-lg transition-colors"
+                                    >
                                         <Settings class="w-4 h-4" />
                                         Settings
                                     </button>

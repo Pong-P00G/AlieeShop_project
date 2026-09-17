@@ -112,6 +112,40 @@ describe('cartService — addItem', () => {
         ).rejects.toMatchObject({ status: 400, message: /positive integer/i });
     });
 
+    it('throws 400 for a fractional quantity sent as a string (no silent truncation)', async () => {
+        await expect(
+            cartService.addItem(42, { product_id: 1, quantity: '1.5' })
+        ).rejects.toMatchObject({ status: 400, message: /positive integer/i });
+
+        expect(CartModel.addCartItem).not.toHaveBeenCalled();
+    });
+
+    it('coerces integer values sent as strings', async () => {
+        await cartService.addItem(42, { product_id: '1', quantity: '3' });
+
+        expect(CartModel.addCartItem).toHaveBeenCalledWith(100, 1, null, 3);
+    });
+
+    it('throws 400 when product_id is not a valid id', async () => {
+        await expect(
+            cartService.addItem(42, { product_id: 'abc', quantity: 1 })
+        ).rejects.toMatchObject({ status: 400, message: /product_id/i });
+    });
+
+    it('treats an empty variant_id as no variant', async () => {
+        await cartService.addItem(42, { product_id: 1, variant_id: '', quantity: 1 });
+
+        expect(CartModel.addCartItem).toHaveBeenCalledWith(100, 1, null, 1);
+    });
+
+    it('throws 400 for an invalid variant_id instead of sending NaN to the model', async () => {
+        await expect(
+            cartService.addItem(42, { product_id: 1, variant_id: 'abc', quantity: 1 })
+        ).rejects.toMatchObject({ status: 400, message: /variant_id/i });
+
+        expect(CartModel.addCartItem).not.toHaveBeenCalled();
+    });
+
     it('throws 400 when product_id is missing', async () => {
         await expect(
             cartService.addItem(42, { quantity: 1 })
@@ -180,6 +214,24 @@ describe('cartService — updateItem', () => {
         await expect(
             cartService.updateItem(42, 200, { quantity: 0 })
         ).rejects.toMatchObject({ status: 400 });
+    });
+
+    it('throws 400 for a fractional quantity', async () => {
+        await expect(
+            cartService.updateItem(42, 200, { quantity: 2.5 })
+        ).rejects.toMatchObject({ status: 400, message: /positive integer/i });
+
+        expect(CartModel.updateCartItemQuantity).not.toHaveBeenCalled();
+    });
+
+    it('coerces an integer quantity sent as a string', async () => {
+        CartModel.getCartItemById.mockResolvedValue({ cartItemId: 200, cartId: 100 });
+        CartModel.getOrCreateCart.mockResolvedValue({ cartId: 100, userId: 42 });
+        CartModel.updateCartItemQuantity.mockResolvedValue({ cartItemId: 200, quantity: 4 });
+
+        await cartService.updateItem(42, 200, { quantity: '4' });
+
+        expect(CartModel.updateCartItemQuantity).toHaveBeenCalledWith(200, 4);
     });
 
     it('throws 404 when cart item does not exist', async () => {

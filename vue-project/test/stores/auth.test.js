@@ -8,6 +8,7 @@ vi.mock('../../src/api/authApi.js', () => {
         login: vi.fn(),
         register: vi.fn(),
         logout: vi.fn(),
+        logoutAll: vi.fn(),
         getMe: vi.fn(),
         getUserPermissions: vi.fn(),
         storePermissions: vi.fn(),
@@ -338,6 +339,45 @@ describe('authStore — logout()', () => {
 
         await store.logout();
         expect(store.error).toBeNull();
+    });
+});
+
+// ════════════════════════════════════════════════════════════════════════════════
+//  LOGOUT EVERYWHERE
+// ════════════════════════════════════════════════════════════════════════════════
+
+describe('authStore — logoutAll()', () => {
+    it('asks the server to revoke every session and clears local state', async () => {
+        authAPI.logoutAll.mockResolvedValue({ success: true });
+
+        const store = useAuthStore();
+        store.user = mockUser;
+        store.permissions = mockPermissions;
+        store.error = 'Some error';
+
+        await store.logoutAll();
+
+        expect(authAPI.logoutAll).toHaveBeenCalled();
+        expect(authAPI.logout).not.toHaveBeenCalled();
+        expect(authAPI.clearPermissions).toHaveBeenCalled();
+        expect(store.user).toBeNull();
+        expect(store.permissions).toEqual([]);
+        expect(store.error).toBeNull();
+    });
+
+    it('still clears local state when the server call fails', async () => {
+        authAPI.logoutAll.mockRejectedValue(new Error('Server error'));
+
+        const store = useAuthStore();
+        store.user = mockUser;
+        store.permissions = mockPermissions;
+
+        // Should not throw — the store catches the error
+        await store.logoutAll();
+
+        expect(store.user).toBeNull();
+        expect(store.permissions).toEqual([]);
+        expect(authAPI.clearPermissions).toHaveBeenCalled();
     });
 });
 

@@ -254,7 +254,10 @@ const discount = ref(0);
 const storeSettings = ref({});
 
 const taxRate = computed(() => {
-    return Number(storeSettings.value.tax_rate) || 8;
+    // Fall back to 8% only when the setting is missing — an explicit 0
+    // (tax disabled by the admin) must be respected.
+    const raw = storeSettings.value.tax_rate;
+    return raw != null && raw !== '' ? Number(raw) : 8;
 });
 
 const taxLabel = computed(() => {
@@ -411,7 +414,13 @@ const handleSubmit = async () => {
 
     } catch (err) {
         console.error('Checkout error:', err);
-        toast.error(err.message || 'Checkout failed. Please try again.');
+        // Surface server-provided reasons (validation, 409 stock conflicts,
+        // payment failures) instead of axios' generic status-code message.
+        const serverMessage = err.response?.data?.message;
+        const friendly = err.response?.status === 409
+            ? (serverMessage || 'Some items in your cart are no longer available in the requested quantity. Please review your cart.')
+            : (serverMessage || err.message || 'Checkout failed. Please try again.');
+        toast.error(friendly);
         processing.value = false;
         processingStep.value = '';
     }

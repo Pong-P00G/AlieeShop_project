@@ -881,6 +881,43 @@ export const globalSearch = async (query) => {
 // ── NOTIFICATIONS ────────────────────────────────────────────────────────────
 
 import * as NotificationModel from '../model/notificationModel.js';
+import * as pushService from './pushService.js';
+
+// ── NOTIFICATION + PUSH DISPATCH ─────────────────────────────────────────────
+
+const NOTIFICATION_TITLES = {
+    order:   'Order update',
+    user:    'New user',
+    stock:   'Low stock alert',
+    product: 'New product',
+    system:  'AlieeShop',
+};
+
+/**
+ * Persist a notification, then deliver it as a web push (fire-and-forget).
+ *
+ * Admin broadcasts (no userId) go to every push subscriber; user-specific
+ * notifications go to that user's subscribed devices. Push delivery failures
+ * are logged only — they never prevent the notification row from being stored.
+ */
+const createNotification = async ({ type, message, link = null, userId = null }) => {
+    const notification = await NotificationModel.createNotification({ type, message, link, userId });
+
+    const payload = {
+        title: NOTIFICATION_TITLES[type] || 'AlieeShop',
+        body: message,
+        url: link || (userId ? '/notifications' : '/admin/dashboard'),
+        tag: `${type}-${notification?.id ?? Date.now()}`,
+    };
+
+    const dispatch = userId
+        ? pushService.sendPushToUser(userId, payload)
+        : pushService.sendPushToAllSubscribers(payload);
+
+    dispatch.catch((err) => console.error('[Push] Dispatch failed:', err.message));
+
+    return notification;
+};
 
 export const getNotifications = async (limit = 20) => {
     const [notifications, unreadCount] = await Promise.all([
@@ -927,11 +964,12 @@ export const removePushSubscription = async (userId, endpoint) => {
     await NotificationModel.removePushSubscription(userId, endpoint);
 };
 
-export const getVapidPublicKey = () => {
-    // Return the public VAPID key for push notification subscription.
-    // In production this should come from an environment variable.
-    return process.env.VAPID_PUBLIC_KEY || 'BLw3SmBK2tC0QHzLxV5F5f5f5f5f5f5f5f5f5f5f5f5f5f5f5f5f5f5f5f5f5f5f5f5f5f5f5f5f5f5f5f5f5f5f5f';
-};
+// Returns the configured VAPID public key, or null when web push is unconfigured.
+// There is deliberately no fallback key: handing the browser a placeholder
+// would let it "subscribe" successfully and then never receive anything.
+export const getVapidPublicKey = () => pushService.getVapidConfig()?.publicKey ?? null;
+
+export const isPushConfigured = () => pushService.isPushConfigured();
 
 // ── AUTO-NOTIFICATION GENERATORS ─────────────────────────────────────────────
 
@@ -999,7 +1037,7 @@ export const getReviewStats = async () => {
 export const notifyNewOrder = async (orderId, username, totalAmount, userId) => {
     // Admin broadcast (independent try/catch so a failure doesn't block the user notification)
     try {
-        await NotificationModel.createNotification({
+        await createNotification({
             type: 'order',
             message: `New order #${orderId} from ${username} — $${parseFloat(totalAmount || 0).toFixed(2)}`,
             link: `/admin/orders`,
@@ -1011,7 +1049,7 @@ export const notifyNewOrder = async (orderId, username, totalAmount, userId) => 
     // User-specific notification
     if (userId) {
         try {
-            await NotificationModel.createNotification({
+            await createNotification({
                 type: 'order',
                 message: `Order #${orderId} placed successfully — $${parseFloat(totalAmount || 0).toFixed(2)}`,
                 link: `/notifications`,
@@ -1026,7 +1064,7 @@ export const notifyNewOrder = async (orderId, username, totalAmount, userId) => 
 /** Called after a new user registers */
 export const notifyNewUser = async (username, isAdmin = false) => {
     try {
-        await NotificationModel.createNotification({
+        await createNotification({
             type: 'user',
             message: isAdmin
                 ? `New admin registered: ${username}`
@@ -1042,7 +1080,7 @@ export const notifyNewUser = async (username, isAdmin = false) => {
 export const notifyLowStock = async (productName, stockLeft, variantSku = null) => {
     try {
         const label = variantSku ? `${productName} (${variantSku})` : productName;
-        await NotificationModel.createNotification({
+        await createNotification({
             type: 'stock',
             message: `Low stock alert: ${label} — only ${stockLeft} left`,
             link: `/admin/manage-stock`,
@@ -1087,7 +1125,7 @@ export const checkAndNotifyLowStock = async () => {
 
             if (existing.length > 0) continue; // Skip — already notified
 
-            await NotificationModel.createNotification({
+            await createNotification({
                 type: 'stock',
                 message: `Low stock alert: ${label} — only ${item.quantity} left (reorder at ${item.reorder_level})`,
                 link: `/admin/manage-stock`,
@@ -1108,7 +1146,7 @@ export const checkAndNotifyLowStock = async () => {
 /** Called when a new product is added */
 export const notifyNewProduct = async (productName) => {
     try {
-        await NotificationModel.createNotification({
+        await createNotification({
             type: 'product',
             message: `New product added: ${productName}`,
             link: `/admin/manage-products`,
@@ -1131,14 +1169,14 @@ export const notifyOrderStatusChange = async (orderId, userId, username, email, 
         const label = statusLabels[newStatus] || newStatus;
 
         // Admin broadcast (visible in admin dashboard)
-        await NotificationModel.createNotification({
+        await createNotification({
             type: 'order',
             message: `Order #${orderId} (${username}) status: ${label}`,
             link: `/admin/orders`,
         });
 
         // User-specific notification (appears on /notifications page)
-        await NotificationModel.createNotification({
+        await createNotification({
             type: 'order',
             message: `Order #${orderId} status update: ${label}`,
             link: `/notifications`,

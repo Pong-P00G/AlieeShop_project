@@ -12,6 +12,23 @@ const toast = useToast();
 const totalQty = computed(() => shop.cart.reduce((s, i) => s + i.qty, 0));
 const totalPrice = computed(() => shop.cart.reduce((s, i) => s + i.qty * i.price, 0));
 
+/**
+ * Human label for a cart line's selected variant. Variant objects come in a
+ * few shapes depending on where the item was added: full API variants
+ * ({ options: [...] } or { variant_size, variant_color, variant_storage }),
+ * legacy local carts ({ size }), or bare skus.
+ */
+const variantLabel = (variant) => {
+    if (!variant) return '';
+    const optionValues = variant.options?.map(o => o.value).filter(Boolean);
+    if (optionValues?.length) return optionValues.join(' / ');
+    const fields = [variant.variant_size, variant.variant_color, variant.variant_storage, variant.size]
+        .filter(Boolean);
+    if (fields.length) return fields.join(' / ');
+    if (variant.sku) return variant.sku;
+    return variant.variant_id ? `Option ${variant.variant_id}` : '';
+};
+
 const inc = (idx) => shop.updateQuantity(idx, shop.cart[idx].qty + 1);
 
 const dec = (idx) => {
@@ -112,7 +129,9 @@ const close = () => shop.closeCart();
                                 <LazyImage :src="it.image" :alt="it.title" wrapper-class="w-20 h-20 rounded-xl shrink-0" img-class="rounded-xl" />
                                 <div class="flex-1 min-w-0">
                                     <h4 class="text-sm font-bold text-ink truncate">{{ it.title }}</h4>
-                                    <p v-if="it.variant && it.variant.size" class="text-xs text-neutral-500 mt-0.5">Size: {{ it.variant.size }}</p>
+                                    <p v-if="variantLabel(it.variant)" class="text-xs text-neutral-500 mt-0.5">
+                                        {{ variantLabel(it.variant) }}
+                                    </p>
                                     <p class="text-sm font-bold text-accent tabular-nums mt-1">{{ '$' }}{{ (it.price * it.qty).toFixed(2) }}</p>
                                     <div class="flex items-center gap-2 mt-2">
                                         <div class="inline-flex items-center bg-paper rounded-full border border-neutral-200">

@@ -24,7 +24,8 @@ const toast = useToast();
 // ── State ──────────────────────────────────────────────────────────────────────
 const loading = ref(true);
 const saving = ref(null); // 'cod' | 'settings' | null
-const error = ref(null);
+const error = ref(null);   // hard failure: the settings request itself failed
+const warning = ref(null); // soft: nothing stored yet, defaults are shown
 
 // COD
 const codMethod = ref(null);
@@ -32,12 +33,30 @@ const feeInput = ref(0);
 
 // Store settings
 const settings = ref({});
-const form = ref({
+
+const DEFAULT_FORM = {
     taxRate: 8,
     currencySymbol: '$',
     defaultCurrency: 'USD',
     freeShippingThreshold: 50,
     defaultShippingOrigin: '',
+};
+
+const form = ref({ ...DEFAULT_FORM });
+
+/**
+ * Map a flat settings payload from the API onto form shape.
+ * Defaults only apply when the key is missing — an explicit 0
+ * (e.g. "disable tax") must survive the round-trip.
+ */
+const toForm = (data = {}) => ({
+    taxRate: data.tax_rate != null ? Number(data.tax_rate) : DEFAULT_FORM.taxRate,
+    currencySymbol: data.currency_symbol ?? DEFAULT_FORM.currencySymbol,
+    defaultCurrency: data.default_currency ?? DEFAULT_FORM.defaultCurrency,
+    freeShippingThreshold: data.free_shipping_threshold != null
+        ? Number(data.free_shipping_threshold)
+        : DEFAULT_FORM.freeShippingThreshold,
+    defaultShippingOrigin: data.default_shipping_origin ?? DEFAULT_FORM.defaultShippingOrigin,
 });
 
 // ── Computed ───────────────────────────────────────────────────────────────────
@@ -46,51 +65,66 @@ const feeDirty = computed(() => {
     return Number(feeInput.value) !== Number(codMethod.value.fee);
 });
 
+const hasStoredSettings = computed(() => Object.keys(settings.value).length > 0);
+
 const settingsDirty = computed(() => {
+    // Nothing persisted yet — there is no baseline to compare against, so the
+    // form must stay saveable or the settings could never be created.
+    if (!hasStoredSettings.value) return true;
+
+    const s = settings.value;
     return (
-        Number(form.value.taxRate) !== Number(settings.value.tax_rate) ||
-        form.value.currencySymbol !== (settings.value.currency_symbol || '$') ||
-        form.value.defaultCurrency !== (settings.value.default_currency || 'USD') ||
-        Number(form.value.freeShippingThreshold) !== Number(settings.value.free_shipping_threshold) ||
-        form.value.defaultShippingOrigin !== (settings.value.default_shipping_origin || '')
+        Number(form.value.taxRate) !== Number(s.tax_rate ?? DEFAULT_FORM.taxRate) ||
+        form.value.currencySymbol !== (s.currency_symbol ?? DEFAULT_FORM.currencySymbol) ||
+        form.value.defaultCurrency !== (s.default_currency ?? DEFAULT_FORM.defaultCurrency) ||
+        Number(form.value.freeShippingThreshold) !== Number(s.free_shipping_threshold ?? DEFAULT_FORM.freeShippingThreshold) ||
+        form.value.defaultShippingOrigin !== (s.default_shipping_origin ?? DEFAULT_FORM.defaultShippingOrigin)
     );
 });
 
-const formatCurrency = (val) => '$' + Number(val || 0).toFixed(2);
+const formatCurrency = (val) => (form.value.currencySymbol || '$') + Number(val || 0).toFixed(2);
 
 // ── Load ───────────────────────────────────────────────────────────────────────
 const loadConfig = async () => {
     try {
         loading.value = true;
         error.value = null;
+        warning.value = null;
 
-        const [payRes, setRes] = await Promise.all([
+        // Settle independently: a missing COD method is not a reason to fail the
+        // whole page, and the store settings are the only fatal dependency.
+        const [paySettled, setSettled] = await Promise.allSettled([
             paymentAPI.getAllPaymentMethods(),
-            settingsAPI.getSettings().catch(() => ({ success: false, data: {} }))
+            settingsAPI.getSettings(),
         ]);
 
-        // Load COD method
-        if (payRes.success && payRes.data) {
-            codMethod.value = payRes.data.find(m => m.methodName === 'Cash on Delivery') || null;
-            if (codMethod.value) {
-                feeInput.value = Number(codMethod.value.fee) || 0;
-            }
+        // Load COD method (optional — the section is hidden when unavailable)
+        const payRes = paySettled.status === 'fulfilled' ? paySettled.value : null;
+        codMethod.value = payRes?.success && Array.isArray(payRes.data)
+            ? payRes.data.find(m => m.methodName === 'Cash on Delivery') || null
+            : null;
+        if (codMethod.value) {
+            feeInput.value = Number(codMethod.value.fee) || 0;
         }
 
-        // Load settings
-        if (setRes.success && setRes.data) {
-            settings.value = setRes.data;
-            form.value = {
-                taxRate: Number(setRes.data.tax_rate) || 8,
-                currencySymbol: setRes.data.currency_symbol || '$',
-                defaultCurrency: setRes.data.default_currency || 'USD',
-                freeShippingThreshold: Number(setRes.data.free_shipping_threshold) || 50,
-                defaultShippingOrigin: setRes.data.default_shipping_origin || '',
-            };
+        const setRes = setSettled.status === 'fulfilled' ? setSettled.value : null;
+
+        // Only a request that actually failed is an error. An empty settings
+        // table is a legitimate first-run state, not a failure.
+        if (setSettled.status === 'rejected' || !setRes?.success) {
+            error.value = setSettled.status === 'rejected'
+                ? (setSettled.reason?.response?.data?.message || 'Could not reach the settings service.')
+                : (setRes?.message || 'Failed to load configuration data.');
+            settings.value = {};
+            return;
         }
 
-        if (!codMethod.value && (!setRes.success || Object.keys(setRes.data).length === 0)) {
-            error.value = 'Failed to load configuration data.';
+        const data = setRes.data && typeof setRes.data === 'object' ? setRes.data : {};
+        settings.value = data;
+        form.value = toForm(data);
+
+        if (Object.keys(data).length === 0) {
+            warning.value = 'No settings have been saved yet — the defaults below will be stored when you save.';
         }
     } catch (err) {
         console.error('Error loading config:', err);
@@ -128,15 +162,20 @@ const saveSettings = async () => {
     try {
         const payload = {
             tax_rate: Number(form.value.taxRate),
-            currency_symbol: form.value.currencySymbol,
-            default_currency: form.value.defaultCurrency,
+            currency_symbol: String(form.value.currencySymbol || '').trim() || DEFAULT_FORM.currencySymbol,
+            // The input is styled uppercase but that is display-only, so
+            // normalise here to keep the stored code matching what is shown.
+            default_currency: String(form.value.defaultCurrency || '').trim().toUpperCase() || DEFAULT_FORM.defaultCurrency,
             free_shipping_threshold: Number(form.value.freeShippingThreshold),
-            default_shipping_origin: form.value.defaultShippingOrigin,
+            default_shipping_origin: String(form.value.defaultShippingOrigin || '').trim(),
         };
 
         const res = await settingsAPI.updateSettings(payload);
         if (res.success) {
-            settings.value = res.data;
+            const data = res.data && typeof res.data === 'object' ? res.data : payload;
+            settings.value = data;
+            form.value = toForm(data);
+            warning.value = null;
             toast.success('Store settings updated');
         } else {
             toast.error(res.message || 'Failed to update settings');
@@ -231,6 +270,17 @@ onMounted(loadConfig);
 
             <!-- Content -->
             <div v-else class="space-y-6">
+
+                <!-- First run: nothing stored yet, defaults are editable -->
+                <div v-if="warning" class="card-flat p-5 bg-amber-50 border-amber-200">
+                    <div class="flex items-start gap-3">
+                        <Info class="w-5 h-5 text-amber-600 shrink-0 mt-0.5" />
+                        <div>
+                            <p class="text-sm font-semibold text-amber-800">Using default settings</p>
+                            <p class="text-xs text-amber-700 mt-1 leading-relaxed">{{ warning }}</p>
+                        </div>
+                    </div>
+                </div>
 
                 <!-- ════════════════════════════════════════════════════════════════
                      SECTION: General Store Settings

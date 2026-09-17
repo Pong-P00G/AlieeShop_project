@@ -134,6 +134,23 @@ export const useAuthStore = defineStore('auth', {
       } catch (err) {
         console.error('Logout error:', err);
       }
+      this.resetLocalSession();
+    },
+
+    // Revoke every session for this user (all devices), not just this browser.
+    // Worth using after a password change or a suspected compromise.
+    async logoutAll() {
+      try {
+        await authAPI.logoutAll();
+      } catch (err) {
+        console.error('Logout all error:', err);
+      }
+      this.resetLocalSession();
+    },
+
+    // Clear everything stored client-side. The httpOnly cookies themselves are
+    // cleared server-side by the logout endpoints.
+    resetLocalSession() {
       authAPI.clearPermissions();
       this.user = null;
       this.permissions = [];

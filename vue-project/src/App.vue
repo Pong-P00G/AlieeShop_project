@@ -12,7 +12,7 @@ const router = useRouter()
 const authStore = useAuthStore()
 const ui = useUIStore()
 
-// ── Direction-aware page transitions ──────────────────────────────
+// Direction-aware page transitions
 // Track navigation direction so the page transition animation
 // slides left (forward) or right (backward) naturally.
 const transitionDirection = ref('forward');
@@ -67,7 +67,7 @@ router.beforeEach((to, from, next) => {
     next();
 });
 
-// ── Re-evaluate route after auth init completes ────────────────────────
+//  Re-evaluate route after auth init completes 
 watch(() => authStore.initialized, (val) => {
     if (val) {
         router.replace(router.currentRoute.value.fullPath);
@@ -77,7 +77,7 @@ watch(() => authStore.initialized, (val) => {
 
 <template>
     <div class="min-h-screen font-sans antialiased">
-        <!-- ── Auth Loading Overlay ──────────────────────────── -->
+        <!--  Auth Loading Overlay  -->
         <Transition name="auth-loading">
             <div v-if="!authStore.initialized"
                 class="fixed inset-0 z-100 flex flex-col items-center justify-center bg-white">
@@ -99,7 +99,7 @@ watch(() => authStore.initialized, (val) => {
             </div>
         </Transition>
 
-        <!-- ── Main App ─────────────────────────────────────── -->
+        <!--  Main App  -->
         <div v-if="authStore.initialized">
             <RouterView v-slot="{ Component, route }">
                 <Transition 

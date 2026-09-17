@@ -164,6 +164,14 @@ const decrementQuantity = () => {
 const addToCart = () => {
     if (addingItem.value) return;
 
+    // Variant-tracked products must not enter the cart without a variant:
+    // backend stock is tracked per variant, and a variantless line would
+    // either fail with 409 or drain the wrong bucket at checkout.
+    if (hasVariants.value && !selectedVariant.value) {
+        toast.error('Please select an option before adding to cart');
+        return;
+    }
+
     shop.addToCart({
         id: product.value.product_id,
         title: product.value.product_name,
@@ -171,6 +179,7 @@ const addToCart = () => {
         qty: quantity.value,
         image: currentImage.value,
         variant: selectedVariant.value || null,
+        variantId: selectedVariant.value?.variant_id ?? null,
     });
     toast.success(`Added ${quantity.value} item(s) to cart!`);
 
@@ -183,6 +192,12 @@ const addToCart = () => {
 
 const buyNow = () => {
     if (addingItem.value) return;
+
+    if (hasVariants.value && !selectedVariant.value) {
+        toast.error('Please select an option before buying');
+        return;
+    }
+
     shop.addToCart({
         id: product.value.product_id,
         title: product.value.product_name,
@@ -190,6 +205,7 @@ const buyNow = () => {
         qty: quantity.value,
         image: currentImage.value,
         variant: selectedVariant.value || null,
+        variantId: selectedVariant.value?.variant_id ?? null,
     });
     toast.success(`Added ${quantity.value} item(s) to cart!`);
     router.push('/checkout');
@@ -643,10 +659,13 @@ onMounted(async () => {
                         <button
                             @click="addToCart"
                             :disabled="!stockStatus.available || addingItem"
+                            :title="hasVariants && !selectedVariant ? 'Select an option first' : null"
                             class="flex-1 py-4 text-sm font-bold rounded-full transition-all duration-300"
                             :class="addingItem
                                 ? 'bg-success text-white scale-[1.02] shadow-[0_8px_24px_-6px_rgb(34_197_94_/_0.45)]'
-                                : 'btn-primary disabled:opacity-40 disabled:hover:translate-y-0'"
+                                : hasVariants && !selectedVariant
+                                    ? 'btn-primary opacity-60 ring-2 ring-accent/40'
+                                    : 'btn-primary disabled:opacity-40 disabled:hover:translate-y-0'"
                         >
                             <transition name="icon-swap" mode="out-in">
                                 <Check v-if="addingItem" key="check" class="w-4 h-4" />

@@ -2,6 +2,7 @@
 import { ref, computed, onMounted } from 'vue';
 import { useRouter } from 'vue-router';
 import { useToast } from '../composables/useToast.js';
+import { useNotificationStore } from '../stores/notifications.js';
 import api from '../api/api.js';
 import {
     Bell, BellRing, Search, RefreshCw, AlertCircle,
@@ -13,6 +14,7 @@ import {
 
 const router = useRouter();
 const toast = useToast();
+const notificationStore = useNotificationStore();
 
 const notifications = ref([]);
 const loading = ref(false);
@@ -108,10 +110,12 @@ const changeTypeFilter = (type) => {
     fetchNotifications();
 };
 
+// Read state goes through the notifications store so the navbar badge (and any
+// other open tab) updates immediately instead of waiting for the next poll
 const markAsRead = async (notification) => {
     if (notification.is_read) return;
     try {
-        await api.put(`/notifications/${notification.id}/read`);
+        await notificationStore.markRead(notification.id);
         notification.is_read = true;
     } catch (err) {
         console.error('Error marking as read:', err);
@@ -122,7 +126,7 @@ const markAsRead = async (notification) => {
 const markAllAsRead = async () => {
     markingAll.value = true;
     try {
-        await api.put('/notifications/read-all');
+        await notificationStore.markAllRead();
         notifications.value.forEach(n => n.is_read = true);
         toast.success('All notifications marked as read');
     } catch (err) {

@@ -125,6 +125,10 @@ const PAGE_META = {
         title: 'Store Config',
         description: 'Manage your store configuration, payment options, and service fees.',
     },
+    settings: {
+        title: 'Settings',
+        description: 'Manage your account, notification preferences, security, and push alerts.',
+    },
     managePaymentMethods: {
         title: 'Payment Methods',
         description: 'Manage payment methods, fees, and availability.',
@@ -375,6 +379,12 @@ const routes = [
                 name: 'config',
                 meta: { page: 'config' },
                 component: () => import('../views/dashboard/Config.vue')
+            },
+            {
+                path: '/admin/settings',
+                name: 'settings',
+                meta: { page: 'settings' },
+                component: () => import('../views/Settings.vue')
             },
         ],
     },

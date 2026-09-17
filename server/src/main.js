@@ -36,6 +36,13 @@ const app = express();
 app.use(helmet());
 app.use(compression());
 
+// Behind the Docker nginx reverse proxy, trust exactly one hop so req.ip (and
+// therefore rate limiting) sees the real client address instead of the proxy.
+// Not enabled in development, where there is no proxy in front of the server.
+if (process.env.NODE_ENV === 'production') {
+    app.set('trust proxy', 1);
+}
+
 // Global rate-limit: 200 requests per 15 min per IP
 const limiter = rateLimit({
     windowMs: 15 * 60 * 1000,
@@ -47,11 +54,17 @@ const limiter = rateLimit({
 app.use(limiter);
 app.use(cors({
     origin: (origin, callback) => {
+        // Only the configured frontend origin is trusted; the localhost dev
+        // origins are dropped entirely in production.
         const allowedOrigins = [
             process.env.FRONTEND_URL,
-            'http://localhost:3001',
-            'http://localhost:5173',
-            'http://127.0.0.1:5173',
+            ...(process.env.NODE_ENV === 'production'
+                ? []
+                : [
+                    'http://localhost:3001',
+                    'http://localhost:5173',
+                    'http://127.0.0.1:5173',
+                ]),
         ].filter(Boolean);
         if (!origin || allowedOrigins.includes(origin)) {
             callback(null, true);

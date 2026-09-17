@@ -1,3 +1,5 @@
+import db from '../database/dbpool.js';
+
 export const calculateRates = async ({ subtotal, itemCount, country, state, zipCode }) => {
     if (!country || !state || !zipCode) {
         const err = new Error('Country, state, and zipCode are required');
@@ -9,6 +11,24 @@ export const calculateRates = async ({ subtotal, itemCount, country, state, zipC
     const isInternational = country !== 'US' && country !== 'CA';
     const isCanada = country === 'CA';
 
+    // Free-shipping threshold comes from store settings (admin Config page);
+    // fall back to 50 only when the setting is missing. An explicit 0 means
+    // free shipping is disabled entirely.
+    let freeShippingThreshold = 50;
+    try {
+        const { rows } = await db.query(
+            `SELECT setting_value FROM store_settings WHERE setting_key = 'free_shipping_threshold'`
+        );
+        if (rows[0]?.setting_value != null && String(rows[0].setting_value).trim() !== '') {
+            const parsed = Number(rows[0].setting_value);
+            if (Number.isFinite(parsed) && parsed >= 0) {
+                freeShippingThreshold = parsed;
+            }
+        }
+    } catch {
+        // Settings table unavailable — keep the 50 default.
+    }
+
     const methods = [];
 
     let standardPrice = 0;
@@ -17,7 +37,9 @@ export const calculateRates = async ({ subtotal, itemCount, country, state, zipC
     } else if (isCanada) {
         standardPrice = Math.max(5.99, numericSubtotal * 0.08);
     } else {
-        standardPrice = numericSubtotal >= 50 ? 0 : 5.99;
+        standardPrice = freeShippingThreshold > 0 && numericSubtotal >= freeShippingThreshold
+            ? 0
+            : 5.99;
     }
 
     methods.push({

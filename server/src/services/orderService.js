@@ -13,6 +13,11 @@ const ALLOWED_STATUSES = ['pending', 'confirmed', 'shipped', 'delivered', 'cance
  *
  * Returns nothing on success. Throws an Error with status=409 when stock is
  * insufficient so the caller can ROLLBACK.
+ *
+ * Product-level rows are the first choice for variantless cart items, but a
+ * product may track stock ONLY at variant level (no product-level row). In
+ * that case decrement the variants round-robin — cheapest-first is not the
+ * goal; draining fewest rows first is simply deterministic.
  */
 const decrementStockForItem = async (client, item) => {
     const { productId, variantId, quantity } = item;
@@ -34,6 +39,49 @@ const decrementStockForItem = async (client, item) => {
              RETURNING stockid`,
             [quantity, productId]
         );
+
+        // No product-level stock row: this product's stock lives on its
+        // variants. Spread the decrement across them, running out only if
+        // the VARIANT TOTAL cannot cover the requested quantity.
+        if (result.rowCount === 0) {
+            const { rows: variantStock } = await client.query(
+                `SELECT stockid, quantity
+                 FROM stock
+                 WHERE productsid = $1 AND variantid IS NOT NULL
+                 ORDER BY quantity DESC
+                 FOR UPDATE`,
+                [productId]
+            );
+
+            const available = variantStock.reduce((sum, r) => sum + r.quantity, 0);
+            if (available < quantity) {
+                const err = new Error(
+                    `Insufficient stock for product ${productId}: requested ${quantity}, only ${available} available`
+                );
+                err.status = 409;
+                throw err;
+            }
+
+            let remaining = quantity;
+            for (const row of variantStock) {
+                if (remaining <= 0) break;
+                const take = Math.min(row.quantity, remaining);
+                const dec = await client.query(
+                    `UPDATE stock
+                     SET quantity = quantity - $1, updatedat = NOW()
+                     WHERE stockid = $2
+                     RETURNING stockid`,
+                    [take, row.stockid]
+                );
+                if (dec.rowCount === 0) {
+                    const err = new Error(`Stock row ${row.stockid} disappeared during decrement`);
+                    err.status = 409;
+                    throw err;
+                }
+                remaining -= take;
+            }
+            return;
+        }
     }
 
     if (result.rowCount === 0) {

@@ -35,16 +35,22 @@ async function fetchCsrfToken() {
     const res = await request(app).get('/');
     const cookies = res.headers['set-cookie'] || [];
     const csrfCookie = cookies.find(c => c.startsWith('csrf-token='));
-    if (csrfCookie) {
-        csrfToken = csrfCookie.split(';')[0].split('=')[1];
+    if (!csrfCookie) {
+        // Fail loudly here instead of letting every later state-changing
+        // request fail with a confusing 403
+        throw new Error('Could not obtain a csrf-token cookie from GET /');
     }
+    csrfToken = csrfCookie.split(';')[0].split('=')[1];
 }
 
+// csrfProtection is a double-submit check: the x-csrf-token header must match
+// the csrf-token cookie. A bare request(app) does not persist cookies between
+// calls (no agent), so BOTH have to be sent on every state-changing request.
 function withCsrf(req) {
-    if (csrfToken) {
-        return req.set('x-csrf-token', csrfToken);
-    }
-    return req;
+    if (!csrfToken) return req;
+    return req
+        .set('x-csrf-token', csrfToken)
+        .set('Cookie', `csrf-token=${csrfToken}`);
 }
 
 // ── Auth request helpers ────────────────────────────────────────────────────
@@ -292,7 +298,8 @@ describe('404 handler', () => {
     });
 
     it('returns 404 for unknown methods on known paths', async () => {
-        const res = await request(app).patch('/api/products');
+        // PATCH is state-changing, so it must clear the CSRF check to reach routing
+        const res = await withCsrf(request(app).patch('/api/products'));
         expect(res.status).toBe(404);
     });
 });

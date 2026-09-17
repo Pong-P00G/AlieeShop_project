@@ -2,6 +2,7 @@
 import { ref, computed, onMounted } from 'vue';
 import { useRouter } from 'vue-router';
 import { dashboardAPI } from '../../api/dashboardApi.js';
+import { useNotificationStore } from '../../stores/notifications.js';
 import { useToast } from '../../composables/useToast.js';
 import {
     Bell,
@@ -22,6 +23,7 @@ import {
 
 const router = useRouter();
 const toast = useToast();
+const notificationStore = useNotificationStore();
 
 const notifications = ref([]);
 const loading = ref(false);
@@ -122,10 +124,12 @@ const changeTypeFilter = (type) => {
     fetchNotifications();
 };
 
+// Routed through the notifications store so the sidebar/navbar badge updates
+// immediately and other tabs follow
 const markAsRead = async (notification) => {
     if (notification.is_read) return;
     try {
-        await dashboardAPI.markNotificationRead(notification.id);
+        await notificationStore.markRead(notification.id);
         notification.is_read = true;
     } catch (err) {
         console.error('Error marking as read:', err);
@@ -136,7 +140,7 @@ const markAsRead = async (notification) => {
 const markAllAsRead = async () => {
     markingAll.value = true;
     try {
-        await dashboardAPI.markAllNotificationsRead();
+        await notificationStore.markAllRead();
         notifications.value.forEach(n => n.is_read = true);
         toast.success('All notifications marked as read');
     } catch (err) {

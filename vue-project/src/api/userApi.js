@@ -26,9 +26,10 @@ export const userAPI = {
         return data.data ?? data;
     },
 
-    // Update current user profile (Protected - requires auth)
+    // Update current user profile (Protected - requires auth).
+    // Self-service lives on /users/profile — PUT /users has no handler.
     async updateProfile(userData) {
-        const { data } = await api.put('/users', userData);
+        const { data } = await api.put('/users/profile', userData);
         return data.data ?? data;
     },
 
