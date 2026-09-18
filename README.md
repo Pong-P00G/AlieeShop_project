@@ -37,7 +37,12 @@ A modern, full-featured e-commerce platform built with **Vue 3**, **Express**, a
 
 - **Frontend**: Vue 3 SPA with Pinia state management, Vue Router, Tailwind CSS v4
 - **Backend**: RESTful Express API with JWT authentication, role-based access control
+<<<<<<< HEAD
 - **Database**: PostgreSQL 18 with connection pooling
+=======
+- **Database**: PostgreSQL with connection pooling
+- **Deployment**: PostgreSQL + API Server + Nginx Frontend
+>>>>>>> 44ece63f188b6fa0ca1b9a72369ea0a10ec0f5c4
 - **Security**: Helmet.js HTTP headers, rate limiting, CSRF protection
 
 ---
@@ -245,6 +250,84 @@ The app will be available at **http://localhost:3001**.
 
 ---
 
+<<<<<<< HEAD
+=======
+## Docker Deployment
+
+### Architecture (Docker Compose)
+
+Three Docker containers work together:
+- **postgres**: PostgreSQL 18 database
+- **server**: Node.js Express API (health check at /health)
+- **frontend**: Nginx serving Vue build + proxying API requests
+
+### Deploy with Docker Compose
+
+```bash
+# 1. Clone the repository
+git clone <your-repo-url>
+cd aliee-shop
+
+# 2. Configure environment
+cp server/.env.example server/.env
+# Edit server/.env with your production values (DB_PASSWORD, JWT_SECRET, etc.)
+
+# 3. Build and start all services
+docker compose up --build -d
+
+# 4. Verify all services are healthy
+docker compose ps
+
+# 5. Run database migrations
+docker compose exec server sh -c "psql \$DB_DATABASE < /app/migrations/*.sql"
+
+# 6. View logs
+docker compose logs -f
+
+# 7. Stop all services
+docker compose down
+```
+
+The application will be available at **http://localhost**.
+
+### Service Details
+
+| Service | Container Name | Port | Health Check |
+|---------|---------------|------|-------------|
+| postgres | aliee-postgres | 5432 | pg_isready |
+| server | aliee-server | 5001 | curl /health |
+| frontend | aliee-frontend | 80 | wget / |
+
+### Useful Docker Commands
+
+```bash
+# View logs for a specific service
+docker compose logs -f server
+
+# Execute commands inside a container
+docker compose exec server node src/main.js
+
+# Rebuild a single service
+docker compose build server
+docker compose up -d server
+
+# Clean up volumes (WARNING: deletes all data)
+docker compose down -v
+```
+
+### Nginx Features
+
+The frontend Nginx container (vue-project/nginx.conf) provides:
+- **Security headers**: X-Frame-Options, X-Content-Type-Options, X-XSS-Protection, Referrer-Policy
+- **Gzip compression**: For JS, CSS, JSON, images, fonts
+- **Static asset caching**: 1-year cache for hashed assets, no-cache for service worker
+- **API proxy**: /api/* routes forwarded to the backend server
+- **CDN proxy**: /cdn/* routes forwarded to the backend
+- **SPA fallback**: All non-file routes serve index.html
+
+---
+
+>>>>>>> 44ece63f188b6fa0ca1b9a72369ea0a10ec0f5c4
 ## Database Migrations
 
 Migration files are located in `server/migrations/`. Run them in order:
