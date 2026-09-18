@@ -1,52 +1,59 @@
 import multer from 'multer';
 import path from 'path';
-import fs from 'fs';
-import { fileURLToPath } from 'url';
+import {
+    PRODUCT_IMAGE_PREFIX,
+    isStorageConfigured,
+    uploadObject,
+    deleteObject,
+    listObjects,
+    publicUrlFor,
+    describeStorageError,
+    IMAGE_EXTENSIONS,
+} from '../services/storageService.js';
 
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = path.dirname(__filename);
+const MAX_FILE_SIZE = 5 * 1024 * 1024; // 5MB
 
-// Configure multer for image uploads
-const storage = multer.diskStorage({
-    destination: function (req, file, cb) {
-        // Create directory if it doesn't exist
-        const uploadDir = path.join(__dirname, '../../../cdn/images/products');
-        if (!fs.existsSync(uploadDir)) {
-            fs.mkdirSync(uploadDir, { recursive: true });
+// Uploads are buffered in memory and sent straight to object storage, so the
+// API never writes files to its own disk.
+const upload = multer({
+    storage: multer.memoryStorage(),
+    fileFilter: function (req, file, cb) {
+        if (file.mimetype.startsWith('image/')) {
+            cb(null, true);
+        } else {
+            cb(new Error('Only image files are allowed!'), false);
         }
-        cb(null, uploadDir);
     },
-    filename: function (req, file, cb) {
-        // Generate unique filename
-        const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1E9);
-        const ext = path.extname(file.originalname);
-        cb(null, file.fieldname + '-' + uniqueSuffix + ext);
-    }
+    limits: {
+        fileSize: MAX_FILE_SIZE,
+    },
 });
 
-// File filter to accept only images
-const fileFilter = (req, file, cb) => {
-    if (file.mimetype.startsWith('image/')) {
-        cb(null, true);
-    } else {
-        cb(new Error('Only image files are allowed!'), false);
-    }
+/** Unique object name — same scheme the disk-backed uploader used. */
+const buildFilename = (file) => {
+    const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1e9);
+    return `${file.fieldname}-${uniqueSuffix}${path.extname(file.originalname)}`;
 };
 
-const upload = multer({
-    storage: storage,
-    fileFilter: fileFilter,
-    limits: {
-        fileSize: 5 * 1024 * 1024 // 5MB limit
-    }
-});
+const buildKey = (filename) => `${PRODUCT_IMAGE_PREFIX}/${filename}`;
+
+const toImagePayload = (file, filename) => {
+    const url = publicUrlFor(buildKey(filename));
+    return {
+        filename,
+        originalName: file.originalname,
+        size: file.size,
+        imagePath: url,
+        url,
+    };
+};
 
 /**
  * Upload single image
  * POST /api/images/upload
  */
 export const uploadImage = (req, res) => {
-    upload.single('image')(req, res, (err) => {
+    upload.single('image')(req, res, async (err) => {
         if (err) {
             return res.status(400).json({
                 success: false,
@@ -61,20 +68,26 @@ export const uploadImage = (req, res) => {
             });
         }
 
-        const imagePath = `/images/products/${req.file.filename}`;
-        const baseUrl = `${req.protocol}://${req.get('host')}`;
+        try {
+            const filename = buildFilename(req.file);
+            await uploadObject({
+                key: buildKey(filename),
+                body: req.file.buffer,
+                contentType: req.file.mimetype,
+            });
 
-        res.json({
-            success: true,
-            message: 'Image uploaded successfully',
-            data: {
-                filename: req.file.filename,
-                originalName: req.file.originalname,
-                size: req.file.size,
-                imagePath,
-                url: `${baseUrl}/cdn${imagePath}`
-            }
-        });
+            res.json({
+                success: true,
+                message: 'Image uploaded successfully',
+                data: toImagePayload(req.file, filename)
+            });
+        } catch (error) {
+            console.error('Image upload error:', describeStorageError(error));
+            res.status(500).json({
+                success: false,
+                message: 'Image upload failed'
+            });
+        }
     });
 };
 
@@ -83,7 +96,7 @@ export const uploadImage = (req, res) => {
  * POST /api/images/upload-multiple
  */
 export const uploadMultipleImages = (req, res) => {
-    upload.array('images', 10)(req, res, (err) => {
+    upload.array('images', 10)(req, res, async (err) => {
         if (err) {
             return res.status(400).json({
                 success: false,
@@ -98,21 +111,31 @@ export const uploadMultipleImages = (req, res) => {
             });
         }
 
-        const baseUrl = `${req.protocol}://${req.get('host')}`;
+        try {
+            const uploaded = await Promise.all(
+                req.files.map(async (file) => {
+                    const filename = buildFilename(file);
+                    await uploadObject({
+                        key: buildKey(filename),
+                        body: file.buffer,
+                        contentType: file.mimetype,
+                    });
+                    return toImagePayload(file, filename);
+                })
+            );
 
-        const imagePaths = req.files.map(file => ({
-            filename: file.filename,
-            originalName: file.originalname,
-            size: file.size,
-            imagePath: `/images/products/${file.filename}`,
-            url: `${baseUrl}/cdn/images/products/${file.filename}`
-        }));
-
-        res.json({
-            success: true,
-            message: `${req.files.length} images uploaded successfully`,
-            data: imagePaths
-        });
+            res.json({
+                success: true,
+                message: `${uploaded.length} images uploaded successfully`,
+                data: uploaded
+            });
+        } catch (error) {
+            console.error('Image upload error:', describeStorageError(error));
+            res.status(500).json({
+                success: false,
+                message: 'Image upload failed'
+            });
+        }
     });
 };
 
@@ -120,24 +143,18 @@ export const uploadMultipleImages = (req, res) => {
  * Delete image
  * DELETE /api/images/:filename
  */
-export const deleteImage = (req, res) => {
+export const deleteImage = async (req, res) => {
     try {
-        const filename = req.params.filename;
-        const filePath = path.join(__dirname, '../../../cdn/images/products', filename);
+        // basename guards against a crafted filename escaping the products/ prefix.
+        const filename = path.basename(req.params.filename);
+        await deleteObject(buildKey(filename));
 
-        if (fs.existsSync(filePath)) {
-            fs.unlinkSync(filePath);
-            res.json({
-                success: true,
-                message: 'Image deleted successfully'
-            });
-        } else {
-            res.status(404).json({
-                success: false,
-                message: 'Image not found'
-            });
-        }
+        res.json({
+            success: true,
+            message: 'Image deleted successfully'
+        });
     } catch (error) {
+        console.error('Image delete error:', describeStorageError(error));
         res.status(500).json({
             success: false,
             message: 'Error deleting image'
@@ -149,30 +166,26 @@ export const deleteImage = (req, res) => {
  * Get all images
  * GET /api/images
  */
-export const getAllImages = (req, res) => {
+export const getAllImages = async (req, res) => {
+    if (!isStorageConfigured()) {
+        return res.status(503).json({
+            success: false,
+            message: 'Image storage is not configured.'
+        });
+    }
+
     try {
-        const imagesDir = path.join(__dirname, '../../../cdn/images/products');
-
-        if (!fs.existsSync(imagesDir)) {
-            return res.json({
-                success: true,
-                data: []
+        const objects = await listObjects(PRODUCT_IMAGE_PREFIX);
+        const images = objects
+            .filter(({ key }) => IMAGE_EXTENSIONS.includes(path.extname(key).toLowerCase()))
+            .map(({ key }) => {
+                const url = publicUrlFor(key);
+                return {
+                    filename: path.basename(key),
+                    url,
+                    path: url
+                };
             });
-        }
-
-        const baseUrl = `${req.protocol}://${req.get('host')}`;
-
-        const files = fs.readdirSync(imagesDir);
-        const images = files
-            .filter(file => {
-                const ext = path.extname(file).toLowerCase();
-                return ['.jpg', '.jpeg', '.png', '.gif', '.webp', '.svg'].includes(ext);
-            })
-            .map(file => ({
-                filename: file,
-                url: `${baseUrl}/cdn/images/products/${file}`,
-                path: `/images/products/${file}`
-            }));
 
         res.json({
             success: true,
@@ -180,6 +193,7 @@ export const getAllImages = (req, res) => {
             data: images
         });
     } catch (error) {
+        console.error('Error fetching images:', describeStorageError(error));
         res.status(500).json({
             success: false,
             message: 'Error fetching images'

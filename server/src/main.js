@@ -4,10 +4,9 @@ import helmet from 'helmet';
 import compression from 'compression';
 import rateLimit from 'express-rate-limit';
 import cookieParser from 'cookie-parser';
-import path from 'path';
-import { fileURLToPath } from 'url';
 import db from './database/dbpool.js';
 import csrfProtection from './middleware/csrfMiddleware.js';
+import { isStorageConfigured, verifyStorage } from './services/storageService.js';
 
 import userRoutes from './routes/userRoutes.js'
 import authRoutes from './routes/authRoutes.js'
@@ -26,8 +25,6 @@ import wishlistRoutes from './routes/wishlistRoutes.js'
 import settingsRoutes from './routes/settingsRoutes.js'
 import userNotificationRoutes from './routes/userNotificationRoutes.js'
 
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = path.dirname(__filename);
 const app = express();
 
 
@@ -36,9 +33,10 @@ const app = express();
 app.use(helmet());
 app.use(compression());
 
-// Behind the Docker nginx reverse proxy, trust exactly one hop so req.ip (and
-// therefore rate limiting) sees the real client address instead of the proxy.
-// Not enabled in development, where there is no proxy in front of the server.
+// In production the API is expected to sit behind a reverse proxy, so trust
+// exactly one hop and let req.ip (and therefore rate limiting) see the real
+// client address instead of the proxy's. Not enabled in development, where
+// there is no proxy in front of the server.
 if (process.env.NODE_ENV === 'production') {
     app.set('trust proxy', 1);
 }
@@ -107,8 +105,8 @@ app.use('/api/wishlist', wishlistRoutes);
 app.use('/api/settings', settingsRoutes);
 app.use('/api/notifications', userNotificationRoutes);
 
-// Serve static files from CDN
-app.use('/cdn', express.static(path.join(__dirname, '../../cdn')));
+// Product images are served from object storage (Cloudflare R2) through its
+// public CDN URLs, so the API no longer mounts a local static directory.
 
 // Root route
 app.get('/', (req, res) => {
@@ -225,12 +223,31 @@ app.use((err, req, res, next) => {
     });
 });
 
+// Check object storage at boot so a bad R2 configuration is visible in the logs
+// instead of surfacing later as a failed image upload. Non-fatal on purpose: the
+// API keeps serving everything that does not need images.
+async function reportObjectStorageStatus() {
+    if (!isStorageConfigured()) {
+        console.warn('⚠️  Object storage is not configured — image uploads are disabled and GET /api/images returns 503. See server/.env.example.');
+        return;
+    }
+
+    try {
+        await verifyStorage();
+        console.log('✅ Object storage reachable (Cloudflare R2)');
+    } catch (error) {
+        console.error(`⚠️  Object storage check failed: ${error.message}`);
+    }
+}
+
 const PORT = process.env.PORT || 5001;
 
 // Prevent listen from running when imported for testing
 const isTestEnv = process.env.NODE_ENV === 'test' || process.env.VITEST === 'true';
 
 if (!isTestEnv) {
+    reportObjectStorageStatus();
+
     app.listen(PORT, () => {
         console.log('='.repeat(50));
         console.log(`🚀 Server is running on port ${PORT}`);

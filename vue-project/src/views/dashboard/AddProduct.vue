@@ -502,7 +502,7 @@ const loadProductForEdit = async (productId) => {
         }
         if (product.images && product.images.length > 0) {
             const extras = product.images.filter(img => img.image_url !== product.thumbnail);
-            form.value.selected_images = extras.map(img => ({ url: img.image_url, filename: img.image_url }));
+            form.value.selected_images = extras.map(img => ({ url: img.image_url, filename: img.image_url.split('/').pop() }));
             selectedExtraImages.value = new Set(extras.map(img => img.image_url));
         }
 

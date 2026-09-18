@@ -25,7 +25,7 @@ export const validateCompleteProduct = (req, res, next) => {
 
         images: Joi.array().items(
             Joi.object({
-                image_url: Joi.string().uri().required(),
+                image_url: Joi.string().uri({ allowRelative: true }).required(),
                 is_main: Joi.boolean().optional(),
                 alt_text: Joi.string().max(255).allow('', null).optional(),
                 sort_order: Joi.number().integer().min(0).optional().default(0)
@@ -228,7 +228,7 @@ export const validateBulkProducts = (req, res, next) => {
                 tags: Joi.array().items(Joi.string()).optional(),
                 images: Joi.array().items(
                     Joi.object({
-                        image_url: Joi.string().uri().required(),
+                        image_url: Joi.string().uri({ allowRelative: true }).required(),
                         is_main: Joi.boolean().optional(),
                         alt_text: Joi.string().max(255).allow('', null).optional(),
                         sort_order: Joi.number().integer().min(0).optional().default(0)

@@ -1396,12 +1396,12 @@ onMounted(() => {
                                 <td class="px-4 sm:px-6 py-3">
                                     <div class="flex items-center gap-3">
                                         <button
-                                            @click="openImagePreview(product.image_url)"
+                                            @click="openImagePreview(product.thumbnail)"
                                             class="group w-10 h-10 sm:w-12 sm:h-12 bg-neutral-100 rounded-xl overflow-hidden shrink-0 border border-neutral-200 hover:border-accent transition-colors relative"
                                         >
                                             <LazyImage
-                                                v-if="product.image_url"
-                                                :src="product.image_url"
+                                                v-if="product.thumbnail"
+                                                :src="product.thumbnail"
                                                 :alt="product.product_name"
                                                 wrapper-class="w-full h-full"
                                                 img-class="w-full h-full object-cover"

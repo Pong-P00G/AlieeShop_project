@@ -199,7 +199,7 @@ onMounted(() => {
 
                     <!-- Avatar -->
                     <div class="relative shrink-0">
-                        <div class="w-24 h-24 md:w-28 md:h-28 rounded-2xl bg-gradient-to-br from-accent-400 to-accent-700 flex items-center justify-center text-3xl font-elegant font-bold text-white shadow-2xl ring-4 ring-white/10">
+                        <div class="w-24 h-24 md:w-28 md:h-28 rounded-2xl bg-linear-to-br from-accent-400 to-accent-700 flex items-center justify-center text-3xl font-elegant font-bold text-white shadow-2xl ring-4 ring-white/10">
                             {{ initials }}
                         </div>
                         <button
@@ -678,7 +678,7 @@ onMounted(() => {
                             <h4 class="text-[10px] font-bold uppercase tracking-widest text-neutral-400 mb-4">Order timeline</h4>
                             <div class="relative pl-4">
                                 <!-- vertical line -->
-                                <div class="absolute left-[11px] top-3 bottom-3 w-px bg-neutral-200"></div>
+                                <div class="absolute left-2.8 top-3 bottom-3 w-px bg-neutral-200"></div>
 
                                 <div class="space-y-5">
                                     <div class="flex items-start gap-4 relative">

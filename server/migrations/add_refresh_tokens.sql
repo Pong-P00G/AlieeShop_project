@@ -1,7 +1,7 @@
--- Active: 1789533750135@@127.0.0.1@5432@allie-shop
+-- Active: 1789533750135@@127.0.0.1@5432@aliee_shop
 -- ============================================================
 -- Migration: Create refresh_tokens table
--- Run: psql -U postgres -d allie-shop -f server/migrations/add_refresh_tokens.sql
+-- Run: psql -U postgres -d aliee_shop -f server/migrations/add_refresh_tokens.sql
 -- ============================================================
 
 CREATE TABLE IF NOT EXISTS refresh_tokens (

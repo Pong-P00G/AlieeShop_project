@@ -105,9 +105,9 @@ BEGIN
 
     INSERT INTO productImages (productsId, imageUrl, altText, isThumbnail, sortOrder)
     VALUES
-        (prod1_id, '/images/products/iphone15pro-black.jpg',  'iPhone 15 Pro Black',  TRUE,  1),
-        (prod1_id, '/images/products/iphone15pro-white.jpg',  'iPhone 15 Pro White',  FALSE, 2),
-        (prod1_id, '/images/products/iphone15pro-titanium.jpg','iPhone 15 Pro Titanium',FALSE,3)
+        (prod1_id, '/cdn/images/products/iphone-15-pro-1.jpg', 'iPhone 15 Pro',            TRUE,  1),
+        (prod1_id, '/cdn/images/products/iphone-15-pro-2.jpg', 'iPhone 15 Pro front view', FALSE, 2),
+        (prod1_id, '/cdn/images/products/iphone-15-pro-3.jpg', 'iPhone 15 Pro in hand',    FALSE, 3)
     ON CONFLICT DO NOTHING;
 
     -- Variants: color + storage
@@ -155,8 +155,8 @@ BEGIN
 
     INSERT INTO productImages (productsId, imageUrl, altText, isThumbnail, sortOrder)
     VALUES
-        (prod2_id, '/images/products/nike-airmax-black.jpg', 'Nike Air Max Black', TRUE, 1),
-        (prod2_id, '/images/products/nike-airmax-white.jpg', 'Nike Air Max White', FALSE, 2)
+        (prod2_id, '/cdn/images/products/nike-air-max-1.jpg', 'Nike Air Max 180',  TRUE,  1),
+        (prod2_id, '/cdn/images/products/nike-air-max-2.jpg', 'Nike Air Max Plus', FALSE, 2)
     ON CONFLICT DO NOTHING;
 
     INSERT INTO variants (productsId, sku) VALUES (prod2_id, 'NAM-BLK-9') RETURNING variantId INTO var_id;
@@ -187,8 +187,8 @@ BEGIN
 
     INSERT INTO productImages (productsId, imageUrl, altText, isThumbnail, sortOrder)
     VALUES
-        (prod3_id, '/images/products/levis-501-blue.jpg',  'Levi''s 501 Blue',  TRUE, 1),
-        (prod3_id, '/images/products/levis-501-black.jpg', 'Levi''s 501 Black', FALSE, 2)
+        (prod3_id, '/cdn/images/products/levis-501-1.jpg', 'Levi''s 501 Red Tab',        TRUE,  1),
+        (prod3_id, '/cdn/images/products/levis-501-2.jpg', 'Levi''s 501 Red Tab detail', FALSE, 2)
     ON CONFLICT DO NOTHING;
 
     INSERT INTO variants (productsId, sku) VALUES (prod3_id, 'LEV501-BLU-32') RETURNING variantId INTO var_id;
@@ -219,8 +219,8 @@ BEGIN
 
     INSERT INTO productImages (productsId, imageUrl, altText, isThumbnail, sortOrder)
     VALUES
-        (prod4_id, '/images/products/sony-xm5-black.jpg', 'Sony WH-1000XM5 Black', TRUE, 1),
-        (prod4_id, '/images/products/sony-xm5-silver.jpg','Sony WH-1000XM5 Silver', FALSE, 2)
+        (prod4_id, '/cdn/images/products/sony-headphones-1.jpg', 'Sony headphones',       TRUE,  1),
+        (prod4_id, '/cdn/images/products/sony-headphones-2.jpg', 'Sony headphones boxed', FALSE, 2)
     ON CONFLICT DO NOTHING;
 
     INSERT INTO variants (productsId, sku) VALUES (prod4_id, 'SONY-XM5-BLK') RETURNING variantId INTO var_id;
@@ -247,7 +247,7 @@ BEGIN
 
     INSERT INTO productImages (productsId, imageUrl, altText, isThumbnail, sortOrder)
     VALUES
-        (prod5_id, '/images/products/green-tea.jpg', 'Organic Green Tea Box', TRUE, 1)
+        (prod5_id, '/cdn/images/products/green-tea-1.jpg', 'Brewed organic green tea', TRUE, 1)
     ON CONFLICT DO NOTHING;
 
     -- Product-level stock (variantId = NULL)
@@ -272,9 +272,9 @@ BEGIN
 
     INSERT INTO productImages (productsId, imageUrl, altText, isThumbnail, sortOrder)
     VALUES
-        (prod6_id, '/images/products/iphone16promax-natural-titanium.svg',  'iPhone 16 Pro Max Natural Titanium',  TRUE,  1),
-        (prod6_id, '/images/products/iphone16promax-desert-titanium.svg',   'iPhone 16 Pro Max Desert Titanium',  FALSE, 2),
-        (prod6_id, '/images/products/iphone16promax-white-titanium.svg',     'iPhone 16 Pro Max White Titanium',   FALSE, 3)
+        (prod6_id, '/cdn/images/products/iphone-16-pro-max-1.jpg', 'iPhone 16 Pro Max Natural Titanium',  TRUE,  1),
+        (prod6_id, '/cdn/images/products/iphone-16-pro-max-2.jpg', 'iPhone 16 Pro Max White Titanium',    FALSE, 2),
+        (prod6_id, '/cdn/images/products/iphone-16-pro-max-3.jpg', 'iPhone 16 Pro Max with clear case',   FALSE, 3)
     ON CONFLICT DO NOTHING;
 
     -- Variant: Natural Titanium / 256GB

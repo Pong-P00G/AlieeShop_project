@@ -190,7 +190,7 @@ watch(route, () => {
                 >
                     <div class="relative">
                         <span class="text-2xl tracking-tight text-ink font-elegant">
-                            <span class="font-light">ALIE</span><span class="font-bold text-orange-400 text-3xl">SHOP</span>
+                            <span class="font-light">ALIEE</span><span class="font-bold text-orange-400 text-3xl">SHOP</span>
                         </span>
                     </div>
                 </RouterLink>

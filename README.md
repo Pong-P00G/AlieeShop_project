@@ -2,10 +2,29 @@
 
 A modern, full-featured e-commerce platform built with **Vue 3**, **Express**, and **PostgreSQL**. Features a sleek black-and-white with orange accents, comprehensive admin dashboard, real-time stock management, and secure JWT-based authentication.
 
+> **New to the codebase?** Start with [PROJECT_OVERVIEW.md](./PROJECT_OVERVIEW.md) for a guided tour of the domain, the request lifecycle, and where each piece of the system lives.
+>
+> **Want the *why* behind the *how*?** [EXPLAIN.md](./EXPLAIN.md) is the deep dive — tech-stack rationale, every keyword and concept explained, and the auth, CSRF, migration and notification mechanics traced end to end.
+
+### In Short
+
+- **Full-stack e-commerce platform** — a customer storefront and a staff admin dashboard in one Vue 3 SPA.
+- **Vue 3 + Express 5 + PostgreSQL 18** — two independent packages (`vue-project/`, `server/`), each with its own install, `.env`, and test runner.
+- **Layered REST API** — route → controller → service → model, with all SQL confined to models and Joi validation at the edge.
+- **Secure by default** — httpOnly-cookie JWTs with rotating single-use refresh tokens, Helmet, rate limiting, CSRF protection, and owner-or-admin row checks.
+- **RBAC admin dashboard** — analytics, catalog/variant/stock management, discounts, reviews, notifications, and store settings.
+- **Shipped with SEO and PWA extras** — dynamic sitemap/robots, per-route meta tags, and web push notifications.
+- **629 automated tests** — 197 frontend, 256 backend unit, 176 backend integration.
+
+> Writing this project up for a CV or portfolio? A copy-paste entry with a
+> claim-by-claim evidence map lives in [PROJECT_OVERVIEW.md → CV / Résumé Highlights](./PROJECT_OVERVIEW.md#cv--résumé-highlights).
+
 ---
 
 ## Table of Contents
 
+- [Project Overview](./PROJECT_OVERVIEW.md)
+- [Deep Dive, Keywords & Tech Stack](./EXPLAIN.md)
 - [Architecture Overview](#architecture-overview)
 - [Tech Stack](#tech-stack)
 - [Project Structure](#project-structure)
@@ -27,22 +46,20 @@ A modern, full-featured e-commerce platform built with **Vue 3**, **Express**, a
 |   Port 80 (prod)      |       |  Helmet + Compression |       |                       |
 +-----------------------+       +-----------------------+       +-----------------------+
          |                             |
-         | /api/*, /cdn/*              | /health
+         | /api/*                      | /health
          v                             v
     index.html +                  Health check
     static assets                 endpoint
 ```
 
+Product images are uploaded to object storage (Cloudflare R2) and loaded by the
+browser directly from its CDN, so image bytes never pass through the API.
+
 ### Architecture Highlights
 
 - **Frontend**: Vue 3 SPA with Pinia state management, Vue Router, Tailwind CSS v4
 - **Backend**: RESTful Express API with JWT authentication, role-based access control
-<<<<<<< HEAD
 - **Database**: PostgreSQL 18 with connection pooling
-=======
-- **Database**: PostgreSQL with connection pooling
-- **Deployment**: PostgreSQL + API Server + Nginx Frontend
->>>>>>> 44ece63f188b6fa0ca1b9a72369ea0a10ec0f5c4
 - **Security**: Helmet.js HTTP headers, rate limiting, CSRF protection
 
 ---
@@ -74,6 +91,7 @@ A modern, full-featured e-commerce platform built with **Vue 3**, **Express**, a
 | **bcrypt** | Password hashing | ^6.0.0 |
 | **Joi** | Request validation | ^18.0.1 |
 | **Multer** | File upload handling | ^2.0.2 |
+| **@aws-sdk/client-s3** | S3-compatible object storage client (Cloudflare R2) | ^3.1135.0 |
 | **Helmet** | Security HTTP headers | ^8.3.0 |
 | **Compression** | Gzip response compression | ^1.8.1 |
 | **express-rate-limit** | API rate limiting | ^8.6.0 |
@@ -84,6 +102,7 @@ A modern, full-featured e-commerce platform built with **Vue 3**, **Express**, a
 | Technology | Purpose |
 |------------|---------|
 | **PostgreSQL** | Production database |
+| **Cloudflare R2** | S3-compatible object storage + CDN for product images |
 | **Vitest** | Unit and integration testing |
 | **Vite** | Frontend development and build |
 
@@ -93,10 +112,12 @@ A modern, full-featured e-commerce platform built with **Vue 3**, **Express**, a
 
 ```
 aliee-shop/
-├── cdn/                          # Static assets (product images)
+├── cdn/                          # Local product images (uploaded to R2 by `npm run images:migrate`)
 │   └── images/products/
 ├── server/                       # Express API backend
-│   ├── migrations/               # SQL migration files
+│   ├── migrations/               # SQL migration files (additive only)
+│   ├── schema/                   # Base schema baseline + how to regenerate it
+│   ├── setup.js                  # One-command DB setup (create + migrate + seed)
 │   ├── src/
 │   │   ├── controller/           # Route handlers
 │   │   ├── database/             # DB connection pool
@@ -161,16 +182,41 @@ npm install
 
 ### 2. Set Up the Database
 
+One command creates the database, loads the core schema, applies every
+migration, and seeds sample products:
+
+```bash
+cd server
+npm run setup
+```
+
+It reads `server/.env`, so finish step 1 first. It is safe to run again — it
+skips what already exists, so it does not disturb a database you have been
+using.
+
+```bash
+npm run setup -- --no-seed      # skip the sample catalog data
+npm run setup -- --force-seed   # seed even if products already exist
+```
+
+<details>
+<summary>Prefer to run the steps by hand?</summary>
+
 ```bash
 # Create the database (PostgreSQL 18)
 createdb aliee_shop
 
-# Run migrations
-psql -d aliee_shop -f server/migrations/*.sql
+# Load the core schema. The migrations are additive and do NOT create the
+# core tables (products, users, category, ...) — those live in this file.
+psql -d aliee_shop -f server/schema/000_base_schema.sql
+
+# Apply migrations through the tracked runner
+npm run migrate
 
 # (Optional) Seed with sample products
 psql -d aliee_shop -f server/seed_products.sql
 ```
+</details>
 
 ### 3. Configure Environment Variables
 
@@ -183,12 +229,18 @@ DB_HOST=localhost
 DB_PORT=5432
 DB_USER=postgres
 DB_PASSWORD=your_password_here
-DB_DATABASE=your_db_name
+DB_DATABASE=aliee_shop
 DB_SSL=false
 JWT_SECRET=your_jwt_secret_change_in_production
 ACCESS_TOKEN_EXPIRES_IN=15m
 REFRESH_TOKEN_EXPIRES_IN=7d
 REFRESH_TOKEN_REMEMBER_EXPIRES_IN=30d
+R2_ENDPOINT=https://<account-id>.r2.cloudflarestorage.com
+R2_ACCESS_KEY_ID=your_r2_access_key_id
+R2_SECRET_ACCESS_KEY=your_r2_secret_access_key
+R2_BUCKET_NAME=aliee-shop-images
+R2_PUBLIC_BASE_URL=https://cdn.example.com
+R2_CACHE_CONTROL=public, max-age=31536000, immutable
 ```
 
 **vue-project/.env**:
@@ -235,6 +287,12 @@ The app will be available at **http://localhost:3001**.
 | VAPID_PUBLIC_KEY | No | - | Web push public key — **all three are required for push to work** |
 | VAPID_PRIVATE_KEY | No | - | Web push private key |
 | VAPID_EMAIL | No | - | Web push contact email (auto-prefixed with `mailto:`) |
+| R2_ENDPOINT | For uploads | - | S3 endpoint, e.g. `https://<account-id>.r2.cloudflarestorage.com` |
+| R2_ACCESS_KEY_ID | For uploads | - | R2 API token access key |
+| R2_SECRET_ACCESS_KEY | For uploads | - | R2 API token secret |
+| R2_BUCKET_NAME | For uploads | - | Bucket holding the product images |
+| R2_PUBLIC_BASE_URL | For uploads | - | Public CDN origin for the bucket (r2.dev URL or custom domain) |
+| R2_CACHE_CONTROL | No | `public, max-age=31536000, immutable` | Cache-Control sent with uploaded objects; the CDN caches them at the edge |
 
 > **Generate a secure JWT secret:**
 > ```bash
@@ -250,84 +308,6 @@ The app will be available at **http://localhost:3001**.
 
 ---
 
-<<<<<<< HEAD
-=======
-## Docker Deployment
-
-### Architecture (Docker Compose)
-
-Three Docker containers work together:
-- **postgres**: PostgreSQL 18 database
-- **server**: Node.js Express API (health check at /health)
-- **frontend**: Nginx serving Vue build + proxying API requests
-
-### Deploy with Docker Compose
-
-```bash
-# 1. Clone the repository
-git clone <your-repo-url>
-cd aliee-shop
-
-# 2. Configure environment
-cp server/.env.example server/.env
-# Edit server/.env with your production values (DB_PASSWORD, JWT_SECRET, etc.)
-
-# 3. Build and start all services
-docker compose up --build -d
-
-# 4. Verify all services are healthy
-docker compose ps
-
-# 5. Run database migrations
-docker compose exec server sh -c "psql \$DB_DATABASE < /app/migrations/*.sql"
-
-# 6. View logs
-docker compose logs -f
-
-# 7. Stop all services
-docker compose down
-```
-
-The application will be available at **http://localhost**.
-
-### Service Details
-
-| Service | Container Name | Port | Health Check |
-|---------|---------------|------|-------------|
-| postgres | aliee-postgres | 5432 | pg_isready |
-| server | aliee-server | 5001 | curl /health |
-| frontend | aliee-frontend | 80 | wget / |
-
-### Useful Docker Commands
-
-```bash
-# View logs for a specific service
-docker compose logs -f server
-
-# Execute commands inside a container
-docker compose exec server node src/main.js
-
-# Rebuild a single service
-docker compose build server
-docker compose up -d server
-
-# Clean up volumes (WARNING: deletes all data)
-docker compose down -v
-```
-
-### Nginx Features
-
-The frontend Nginx container (vue-project/nginx.conf) provides:
-- **Security headers**: X-Frame-Options, X-Content-Type-Options, X-XSS-Protection, Referrer-Policy
-- **Gzip compression**: For JS, CSS, JSON, images, fonts
-- **Static asset caching**: 1-year cache for hashed assets, no-cache for service worker
-- **API proxy**: /api/* routes forwarded to the backend server
-- **CDN proxy**: /cdn/* routes forwarded to the backend
-- **SPA fallback**: All non-file routes serve index.html
-
----
-
->>>>>>> 44ece63f188b6fa0ca1b9a72369ea0a10ec0f5c4
 ## Database Migrations
 
 Migration files are located in `server/migrations/`. Run them in order:
@@ -357,8 +337,35 @@ npm run migrate -- --status   # list applied/pending files without changing anyt
 | add_store_settings.sql | Store configuration table |
 | add_variant_price.sql | Product variant pricing |
 | add_wishlist_table.sql | Wishlist feature |
+| normalize_product_image_paths.sql | Rewrites stored product image paths to the public `/cdn` prefix |
 
 > Migrations are applied and tracked by the runner above. Run `npm run migrate` after pulling changes — it skips files already recorded in `schema_migrations` and prints an error naming the file if one fails.
+
+### Product images (object storage)
+
+Product images live in the R2 bucket, not in the repository. Two helper scripts manage them:
+
+```bash
+cd server
+npm run images:migrate   # upload cdn/images/products/* and rewrite their stored URLs
+npm run images:cache     # backfill Cache-Control on objects uploaded before caching was added
+```
+
+Object keys are unique and immutable, so uploads are written with a one-year
+`Cache-Control` (`R2_CACHE_CONTROL` overrides it) that the CDN caches at the edge.
+
+### Base schema
+
+Everything in `migrations/` is *additive*: it creates feature tables and adds
+columns, but it never created the core tables. `server/schema/000_base_schema.sql`
+is a `pg_dump --schema-only` snapshot of those core objects — 18 tables
+(`products`, `users`, `category`, `orders`, `cart`, `stock`, …), 5 views, their
+indexes, foreign keys and the `pgcrypto` extension.
+
+`npm run setup` applies it automatically, and only when the target database has
+no core tables yet, so a fresh machine gets a working database while an existing
+one is left alone. See [server/schema/README.md](server/schema/README.md) for the
+full contents and how to regenerate the file.
 
 ---
 
@@ -382,7 +389,6 @@ npm run migrate -- --status   # list applied/pending files without changing anyt
 | /api/settings | Store configuration |
 | /api/notifications | User notifications |
 | /api/images | Image upload and management |
-| /cdn | Static file serving |
 | /health | Health check endpoint |
 
 ---
@@ -563,9 +569,11 @@ Access to XMLHttpRequest has been blocked by CORS policy
 - Verify FRONTEND_URL in server/.env matches your frontend origin
 - For local dev, ensure both servers are on the allowed origins list
 
-### Static assets not loading
-- Verify CDN images exist in cdn/images/products/
-- Check that the backend server is running and serving static files
+### Product images not loading
+- Confirm the `R2_*` variables in `server/.env` are set (see `server/.env.example`)
+- Run `npm run images:migrate` once to upload the files in `cdn/images/products/` and rewrite stored image URLs
+- Images uploaded before caching existed? Run `npm run images:cache` to backfill `Cache-Control`
+- Images are served from `R2_PUBLIC_BASE_URL` (the bucket's CDN origin), not from the API — a 404 means the object is missing from the bucket or the bucket is not public
 
 ### Authentication not persisting after refresh
 - Ensure cookies are sent with withCredentials: true
