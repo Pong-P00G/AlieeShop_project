@@ -252,7 +252,7 @@ The app will be available at **http://localhost:3001**.
 ### Architecture (Docker Compose)
 
 Three Docker containers work together:
-- **postgres**: PostgreSQL 16 database
+- **postgres**: PostgreSQL 18 database
 - **server**: Node.js Express API (health check at /health)
 - **frontend**: Nginx serving Vue build + proxying API requests
 
