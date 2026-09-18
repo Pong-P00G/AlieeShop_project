@@ -39,7 +39,7 @@ A modern, full-featured e-commerce platform built with **Vue 3**, **Express**, a
 - **Frontend**: Vue 3 SPA with Pinia state management, Vue Router, Tailwind CSS v4
 - **Backend**: RESTful Express API with JWT authentication, role-based access control
 - **Database**: PostgreSQL with connection pooling
-- **Deployment**: Docker Compose (3 services) - PostgreSQL + API Server + Nginx Frontend
+- **Deployment**: PostgreSQL + API Server + Nginx Frontend
 - **Security**: Helmet.js HTTP headers, rate limiting, CSRF protection
 
 ---
