@@ -1,6 +1,6 @@
 # AlieeShop - Full-Stack E-Commerce Platform
 
-A modern, full-featured e-commerce platform built with **Vue 3**, **Express**, and **PostgreSQL**. Features a sleek black-and-white design with orange accents, comprehensive admin dashboard, real-time stock management, and Docker-based deployment.
+A modern, full-featured e-commerce platform built with **Vue 3**, **Express**, and **PostgreSQL**. Features a sleek black-and-white with orange accents, comprehensive admin dashboard, real-time stock management, and secure JWT-based authentication.
 
 ---
 
@@ -12,7 +12,6 @@ A modern, full-featured e-commerce platform built with **Vue 3**, **Express**, a
 - [Prerequisites](#prerequisites)
 - [Quick Start (Development)](#quick-start-development)
 - [Environment Variables](#environment-variables)
-- [Docker Deployment](#docker-deployment)
 - [Database Migrations](#database-migrations)
 - [API Overview](#api-overview)
 - [Testing](#testing)
@@ -23,9 +22,9 @@ A modern, full-featured e-commerce platform built with **Vue 3**, **Express**, a
 
 ```
 +-----------------------+       +-----------------------+       +-----------------------+
-|   Frontend (Vue 3)    |       |   Backend (Express)   |       |     PostgreSQL 18     |
+|   Frontend (Vue 3)    |       |   Backend (Express)   |       |   PostgreSQL 18       |
 |    Port 3001 (dev)    | ----> |      Port 5001        | ----> |       Port 5432       |
-|   Port 80 (Docker)    |       |  Helmet + Compression |       |                       |
+|   Port 80 (prod)      |       |  Helmet + Compression |       |                       |
 +-----------------------+       +-----------------------+       +-----------------------+
          |                             |
          | /api/*, /cdn/*              | /health
@@ -38,8 +37,7 @@ A modern, full-featured e-commerce platform built with **Vue 3**, **Express**, a
 
 - **Frontend**: Vue 3 SPA with Pinia state management, Vue Router, Tailwind CSS v4
 - **Backend**: RESTful Express API with JWT authentication, role-based access control
-- **Database**: PostgreSQL with connection pooling
-- **Deployment**: Docker Compose (3 services) - PostgreSQL + API Server + Nginx Frontend
+- **Database**: PostgreSQL 18 with connection pooling
 - **Security**: Helmet.js HTTP headers, rate limiting, CSRF protection
 
 ---
@@ -47,38 +45,42 @@ A modern, full-featured e-commerce platform built with **Vue 3**, **Express**, a
 ## Tech Stack
 
 ### Frontend (vue-project/)
-| Technology | Purpose |
-|------------|--------|
-| **Vue 3** (Composition API) | UI framework |
-| **Vite 7** | Build tool and dev server |
-| **Pinia** | State management |
-| **Vue Router** | Client-side routing |
-| **Tailwind CSS v4** | Utility-first styling |
-| **Axios** | HTTP client |
-| **Unhead** | SEO meta/OG tag management |
-| **Lucide Icons** | Icon library |
-| **Chart.js + vue-chartjs** | Dashboard analytics |
-| **html2pdf.js** | PDF receipt generation |
+| Technology | Purpose | Version |
+|------------|---------|---------|
+| **Vue 3** (Composition API) | UI framework | ^3.5.17 |
+| **Vite 7** | Build tool and dev server | ^7.0.0 |
+| **Pinia** | State management | ^3.0.3 |
+| **Vue Router** | Client-side routing | ^4.5.1 |
+| **Tailwind CSS** | Utility-first styling | ^4.1.18 |
+| **@tailwindcss/vite** | Tailwind Vite plugin | ^4.1.18 |
+| **Axios** | HTTP client | ^1.11.0 |
+| **Unhead** | SEO meta/OG tag management | ^3.1.7 |
+| **Lucide Vue Next** | Icon library | ^0.534.0 |
+| **Chart.js** | Dashboard analytics | ^4.5.1 |
+| **vue-chartjs** | Chart.js wrapper | ^5.3.4 |
+| **html2pdf.js** | PDF receipt generation | ^0.14.0 |
 
 ### Backend (server/)
-| Technology | Purpose |
-|------------|--------|
-| **Express 5** | HTTP server framework |
-| **PostgreSQL (pg)** | Database driver with connection pool |
-| **JWT (jsonwebtoken)** | Authentication tokens |
-| **bcrypt** | Password hashing |
-| **Joi** | Request validation |
-| **Multer** | File upload handling |
-| **Helmet** | Security HTTP headers |
-| **Compression** | Gzip response compression |
-| **express-rate-limit** | API rate limiting |
+| Technology | Purpose | Version |
+|------------|---------|---------|
+| **Express** | HTTP server framework | ^5.1.0 |
+| **PostgreSQL (pg)** | Database driver with connection pool | ^8.16.3 |
+| **JWT (jsonwebtoken)** | Authentication tokens | ^9.0.2 |
+| **bcrypt** | Password hashing | ^6.0.0 |
+| **Joi** | Request validation | ^18.0.1 |
+| **Multer** | File upload handling | ^2.0.2 |
+| **Helmet** | Security HTTP headers | ^8.3.0 |
+| **Compression** | Gzip response compression | ^1.8.1 |
+| **express-rate-limit** | API rate limiting | ^8.6.0 |
+| **cookie-parser** | Cookie parsing | ^1.4.7 |
+| **web-push** | Web push notifications | ^3.6.7 |
 
 ### Infrastructure
 | Technology | Purpose |
-|------------|--------|
-| **Docker Compose** | Multi-container orchestration |
-| **Nginx** | Reverse proxy + static file serving |
+|------------|---------|
+| **PostgreSQL** | Production database |
 | **Vitest** | Unit and integration testing |
+| **Vite** | Frontend development and build |
 
 ---
 
@@ -120,11 +122,8 @@ aliee-shop/
 │   │   │   └── pages/            # Static pages (About, FAQ, etc.)
 │   │   └── main.js               # App entry point
 │   ├── test/                     # Frontend tests
-│   ├── nginx.conf                # Nginx config for Docker
 │   └── vite.config.js            # Vite build configuration
-├── docker-compose.yml            # Full-stack Docker deployment
-├── Dockerfile.server             # Server container image
-├── Dockerfile.frontend           # Frontend container image
+├── package.json                  # Root package (optional)
 └── README.md                     # This file
 ```
 
@@ -134,8 +133,7 @@ aliee-shop/
 
 - **Node.js** >= 22 (local development)
 - **npm** >= 10
-- **PostgreSQL** >= 18 (local dev, or use Docker)
-- **Docker Desktop** >= 24 (for containerized deployment)
+- **PostgreSQL** >= 18 (local dev or Docker)
 - **Git**
 
 ---
@@ -159,7 +157,7 @@ npm install
 ### 2. Set Up the Database
 
 ```bash
-# Create the database
+# Create the database (PostgreSQL 18)
 createdb aliee_shop
 
 # Run migrations
@@ -180,7 +178,7 @@ DB_HOST=localhost
 DB_PORT=5432
 DB_USER=postgres
 DB_PASSWORD=your_password_here
-DB_DATABASE=aliee_shop
+DB_DATABASE=your_db_name
 DB_SSL=false
 JWT_SECRET=your_jwt_secret_change_in_production
 ACCESS_TOKEN_EXPIRES_IN=15m
@@ -247,81 +245,6 @@ The app will be available at **http://localhost:3001**.
 
 ---
 
-## Docker Deployment
-
-### Architecture (Docker Compose)
-
-Three Docker containers work together:
-- **postgres**: PostgreSQL 16 database
-- **server**: Node.js Express API (health check at /health)
-- **frontend**: Nginx serving Vue build + proxying API requests
-
-### Deploy with Docker Compose
-
-```bash
-# 1. Clone the repository
-git clone <your-repo-url>
-cd aliee-shop
-
-# 2. Configure environment
-cp server/.env.example server/.env
-# Edit server/.env with your production values (DB_PASSWORD, JWT_SECRET, etc.)
-
-# 3. Build and start all services
-docker compose up --build -d
-
-# 4. Verify all services are healthy
-docker compose ps
-
-# 5. Run database migrations
-docker compose exec server sh -c "psql \$DB_DATABASE < /app/migrations/*.sql"
-
-# 6. View logs
-docker compose logs -f
-
-# 7. Stop all services
-docker compose down
-```
-
-The application will be available at **http://localhost**.
-
-### Service Details
-
-| Service | Container Name | Port | Health Check |
-|---------|---------------|------|-------------|
-| postgres | aliee-postgres | 5432 | pg_isready |
-| server | aliee-server | 5001 | curl /health |
-| frontend | aliee-frontend | 80 | wget / |
-
-### Useful Docker Commands
-
-```bash
-# View logs for a specific service
-docker compose logs -f server
-
-# Execute commands inside a container
-docker compose exec server node src/main.js
-
-# Rebuild a single service
-docker compose build server
-docker compose up -d server
-
-# Clean up volumes (WARNING: deletes all data)
-docker compose down -v
-```
-
-### Nginx Features
-
-The frontend Nginx container (vue-project/nginx.conf) provides:
-- **Security headers**: X-Frame-Options, X-Content-Type-Options, X-XSS-Protection, Referrer-Policy
-- **Gzip compression**: For JS, CSS, JSON, images, fonts
-- **Static asset caching**: 1-year cache for hashed assets, no-cache for service worker
-- **API proxy**: /api/* routes forwarded to the backend server
-- **CDN proxy**: /cdn/* routes forwarded to the backend
-- **SPA fallback**: All non-file routes serve index.html
-
----
-
 ## Database Migrations
 
 Migration files are located in `server/migrations/`. Run them in order:
@@ -331,6 +254,8 @@ cd server
 npm run migrate          # applies pending migrations, records each in schema_migrations
 npm run migrate -- --status   # list applied/pending files without changing anything
 ```
+
+> **PostgreSQL 18** is required for database compatibility.
 
 ### Migration List
 
@@ -347,10 +272,10 @@ npm run migrate -- --status   # list applied/pending files without changing anyt
 | add_reviews_table.sql | Product reviews |
 | add_role_permissions.sql | Roles, permissions, and role assignments |
 | add_store_settings.sql | Store configuration table |
-
-> Migrations are applied and tracked by the runner above. Run `npm run migrate` after pulling changes — it skips files already recorded in `schema_migrations` and prints an error naming the file if one fails.
 | add_variant_price.sql | Product variant pricing |
 | add_wishlist_table.sql | Wishlist feature |
+
+> Migrations are applied and tracked by the runner above. Run `npm run migrate` after pulling changes — it skips files already recorded in `schema_migrations` and prints an error naming the file if one fails.
 
 ---
 
@@ -462,9 +387,6 @@ On top of that, every route enforces who may touch a given row:
 | `POST /api/auth/login`, `/register` | 10 **failed** attempts / 15 min per IP — successful logins are not counted, so a shared/NAT IP is not locked out by someone else |
 | `POST /api/auth/refresh` | 60 / 15 min per IP |
 
-In production the server sets `trust proxy` to one hop so `req.ip` reflects the
-real client behind the nginx container rather than the proxy itself.
-
 ### Secrets and CORS
 
 - `server/.env` is gitignored; only `server/.env.example` is committed. `JWT_SECRET`, `DB_PASSWORD`, `VAPID_PRIVATE_KEY` and friends are read exclusively by the server.
@@ -539,7 +461,6 @@ Before deploying to production, verify each item:
 - [ ] **Run all migrations** before starting the application (`cd server && npm run migrate`, including `add_refresh_tokens.sql`)
 - [ ] **Keep the access token short-lived** (default 15m) and review refresh token lifetimes
 - [ ] **Confirm no secret uses a `VITE_` prefix** - those values are embedded in the public bundle
-- [ ] **Verify health checks** pass for all Docker services
 
 ---
 
@@ -559,16 +480,9 @@ Access to XMLHttpRequest has been blocked by CORS policy
 - Verify FRONTEND_URL in server/.env matches your frontend origin
 - For local dev, ensure both servers are on the allowed origins list
 
-### Docker container exits immediately
-```bash
-docker compose logs server
-```
-- Check for missing environment variables (DB_PASSWORD and JWT_SECRET)
-- Verify database health check passes before server starts
-
-### Static assets not loading (Docker)
+### Static assets not loading
 - Verify CDN images exist in cdn/images/products/
-- Check nginx proxy pass configuration for /cdn/ routes
+- Check that the backend server is running and serving static files
 
 ### Authentication not persisting after refresh
 - Ensure cookies are sent with withCredentials: true

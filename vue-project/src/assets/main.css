@@ -5,8 +5,6 @@
 @import "shadcn/tailwind.css";
 @import "@fontsource-variable/geist";
 
-@custom-variant dark (&:is(.dark *));
-
 /* =========================================================
    THEME TOKENS — Black & White with Orange Accent
    ========================================================= */
@@ -120,8 +118,8 @@ body {
     content: '';
     position: absolute;
     inset: 0;
-    background: radial-gradient(circle at 50% 50%, rgba(255,255,255,0.3) 0%, transparent 60%);
-    transform: scale(0);
+    background: radial-gradient(circle at 50% 50%, rgb(255 255 255 / 0.3) 0%, transparent 60%);
+    transform: scale(0) translateZ(0);
     opacity: 1;
     pointer-events: none;
     border-radius: inherit;
@@ -134,9 +132,9 @@ body {
     @apply inline-flex items-center justify-center gap-2 px-6 py-3
            bg-accent text-white font-semibold text-sm
            rounded-full
-           shadow-[0_8px_24px_-6px_rgb(249_115_22_/_0.45)]
+           shadow-[0_8px_24px_-6px_rgb(249_115_22_/0.45)]
            transition-all duration-200
-           hover:bg-accent-600 hover:-translate-y-0.5 hover:shadow-[0_12px_28px_-6px_rgb(249_115_22_/_0.55)]
+           hover:bg-accent-600 hover:-translate-y-0.5 hover:shadow-[0_12px_28px_-6px_rgb(249_115_22_/0.55)]
            active:translate-y-0 active:bg-accent-700
            focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-offset-2
            disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:translate-y-0
@@ -146,8 +144,8 @@ body {
     content: '';
     position: absolute;
     inset: 0;
-    background: radial-gradient(circle at 50% 50%, rgba(255,255,255,0.3) 0%, transparent 60%);
-    transform: scale(0);
+    background: radial-gradient(circle at 50% 50%, rgb(255 255 255 / 0.3) 0%, transparent 60%);
+    transform: scale(0) translateZ(0);
     opacity: 1;
     pointer-events: none;
     border-radius: inherit;
@@ -170,8 +168,8 @@ body {
     content: '';
     position: absolute;
     inset: 0;
-    background: radial-gradient(circle at 50% 50%, rgba(0,0,0,0.08) 0%, transparent 60%);
-    transform: scale(0);
+    background: radial-gradient(circle at 50% 50%, rgb(0 0 0 / 0.08) 0%, transparent 60%);
+    transform: scale(0) translateZ(0);
     opacity: 1;
     pointer-events: none;
     border-radius: inherit;
@@ -203,7 +201,7 @@ body {
   .card-base {
     @apply bg-paper border border-neutral-200 rounded-2xl
            transition-all duration-300
-           hover:border-neutral-400 hover:-translate-y-1 hover:shadow-[0_12px_32px_-8px_rgb(0_0_0_/_0.12)];
+           hover:border-neutral-400 hover:-translate-y-1 hover:shadow-[0_12px_32px_-8px_rgb(0_0_0_/0.12)];
   }
 
   .card-flat {

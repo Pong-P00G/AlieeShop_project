@@ -185,37 +185,64 @@ onMounted(() => {
 
 <template>
     <div class="bg-neutral-50 min-h-screen">
-        <!-- Cover + avatar -->
-        <section class="bg-ink text-paper">
-            <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-12 pb-24">
+
+        <!-- ── Hero Header ─────────────────────────────────────── -->
+        <section class="relative bg-ink text-paper overflow-hidden">
+            <!-- subtle grid texture -->
+            <div class="absolute inset-0 opacity-[0.04]"
+                 style="background-image: linear-gradient(#fff 1px,transparent 1px),linear-gradient(90deg,#fff 1px,transparent 1px); background-size: 40px 40px;"></div>
+            <!-- orange glow bottom-right -->
+            <div class="absolute -bottom-20 -right-20 w-80 h-80 rounded-full bg-accent/20 blur-3xl pointer-events-none"></div>
+
+            <div class="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-14 pb-28">
                 <div class="flex flex-col md:flex-row items-start md:items-end gap-6">
-                    <div class="relative">
-                        <div class="w-28 h-28 rounded-3xl bg-accent flex items-center justify-center text-3xl font-elegant font-bold text-white border-4 border-paper">
+
+                    <!-- Avatar -->
+                    <div class="relative shrink-0">
+                        <div class="w-24 h-24 md:w-28 md:h-28 rounded-2xl bg-gradient-to-br from-accent-400 to-accent-700 flex items-center justify-center text-3xl font-elegant font-bold text-white shadow-2xl ring-4 ring-white/10">
                             {{ initials }}
                         </div>
-                        <button class="absolute bottom-1 right-1 w-9 h-9 rounded-full bg-paper text-ink flex items-center justify-center shadow-lg hover:bg-accent hover:text-white transition-colors" aria-label="Change photo">
-                            <Camera class="w-4 h-4" />
+                        <button
+                            class="absolute -bottom-2 -right-2 w-8 h-8 rounded-xl bg-paper text-ink flex items-center justify-center shadow-lg hover:bg-accent hover:text-white transition-all duration-200"
+                            aria-label="Change photo"
+                        >
+                            <Camera class="w-3.5 h-3.5" />
                         </button>
                     </div>
-                    <div class="flex-1">
-                        <p class="text-xs font-bold uppercase tracking-[0.2em] text-accent mb-1">Member since {{ profile.joined }}</p>
-                        <h1 class="text-3xl md:text-4xl font-elegant font-bold">{{ profile.name }}</h1>
-                        <p class="text-neutral-400 mt-1 flex items-center gap-2">
-                            <Mail class="w-4 h-4" />
-                            {{ profile.email }}
-                        </p>
+
+                    <!-- Name / meta -->
+                    <div class="flex-1 min-w-0">
+                        <div class="flex items-center gap-2 mb-2">
+                            <span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-accent/15 border border-accent/25 text-[10px] font-bold uppercase tracking-[0.15em] text-accent">
+                                <span class="w-1.5 h-1.5 rounded-full bg-accent pulse-dot"></span>
+                                Member since {{ profile.joined }}
+                            </span>
+                        </div>
+                        <h1 class="text-3xl md:text-4xl font-elegant font-bold leading-tight truncate">{{ profile.name }}</h1>
+                        <div class="flex flex-wrap items-center gap-4 mt-2 text-sm text-neutral-400">
+                            <span class="flex items-center gap-1.5">
+                                <Mail class="w-3.5 h-3.5" />
+                                {{ profile.email }}
+                            </span>
+                            <span class="flex items-center gap-1.5">
+                                <MapPin class="w-3.5 h-3.5" />
+                                {{ profile.location }}
+                            </span>
+                        </div>
                     </div>
-                    <div class="flex items-center gap-2">
+
+                    <!-- Actions -->
+                    <div class="flex flex-wrap items-center gap-2 shrink-0">
                         <button
                             @click="isEditing = !isEditing"
-                            class="inline-flex items-center gap-2 px-5 py-2.5 bg-paper text-ink font-bold text-sm rounded-full hover:bg-accent hover:text-white transition-all"
+                            class="inline-flex items-center gap-2 px-4 py-2 bg-white text-ink font-semibold text-sm rounded-xl hover:bg-accent hover:text-white transition-all duration-200 shadow-sm"
                         >
                             <Edit3 class="w-4 h-4" />
                             {{ isEditing ? 'Cancel' : 'Edit profile' }}
                         </button>
                         <button
                             @click="logout"
-                            class="inline-flex items-center gap-2 px-5 py-2.5 bg-transparent border border-neutral-700 text-paper font-bold text-sm rounded-full hover:bg-paper hover:text-ink transition-all"
+                            class="inline-flex items-center gap-2 px-4 py-2 bg-white/10 border border-white/20 text-paper font-semibold text-sm rounded-xl hover:bg-white hover:text-ink transition-all duration-200"
                         >
                             <LogOut class="w-4 h-4" />
                             Sign out
@@ -223,45 +250,51 @@ onMounted(() => {
                         <button
                             @click="logoutEverywhere"
                             title="Signs you out on every device and invalidates all active sessions"
-                            class="inline-flex items-center gap-2 px-5 py-2.5 bg-transparent border border-neutral-700 text-paper font-bold text-sm rounded-full hover:bg-paper hover:text-ink transition-all"
+                            class="inline-flex items-center gap-2 px-4 py-2 bg-white/10 border border-white/20 text-paper font-semibold text-sm rounded-xl hover:bg-white hover:text-ink transition-all duration-200"
                         >
                             <ShieldCheck class="w-4 h-4" />
-                            Sign out everywhere
+                            <span class="hidden sm:inline">Sign out everywhere</span>
+                            <span class="sm:hidden">All devices</span>
                         </button>
                     </div>
                 </div>
             </div>
         </section>
 
-        <section class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 -mt-16 pb-16 relative z-10">
-            <!-- Stats -->
-            <div class="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-8">
-                <div v-for="s in stats" :key="s.label" class="bg-paper border border-neutral-200 rounded-2xl p-4 sm:p-5 flex items-center gap-3 sm:gap-4 transition-all duration-200 hover:border-ink hover:shadow-md hover:-translate-y-0.5 group/stats">
-                    <div class="w-10 h-10 sm:w-11 sm:h-11 rounded-xl bg-neutral-100 flex items-center justify-center shrink-0 group-hover/stats:bg-accent group-hover/stats:text-white transition-colors duration-200">
-                        <component :is="s.icon" class="w-5 h-5 text-ink group-hover/stats:text-white transition-colors duration-200" />
+        <!-- ── Body ───────────────────────────────────────────── -->
+        <section class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 -mt-14 pb-20 relative z-10">
+
+            <!-- Stats row -->
+            <div class="grid grid-cols-3 gap-3 sm:gap-4 mb-8">
+                <div
+                    v-for="s in stats" :key="s.label"
+                    class="bg-paper border border-neutral-200 rounded-2xl p-4 sm:p-5 flex items-center gap-3 sm:gap-4 shadow-sm hover:shadow-md hover:-translate-y-0.5 transition-all duration-200 group/stat"
+                >
+                    <div class="w-10 h-10 sm:w-11 sm:h-11 rounded-xl bg-neutral-100 flex items-center justify-center shrink-0 group-hover/stat:bg-ink group-hover/stat:text-paper transition-all duration-200">
+                        <component :is="s.icon" class="w-5 h-5 text-ink group-hover/stat:text-paper transition-colors duration-200" />
                     </div>
                     <div class="min-w-0">
-                        <p class="text-xl sm:text-2xl font-elegant font-bold text-ink tabular-nums">{{ s.value }}</p>
-                        <p class="text-xs font-bold uppercase tracking-wider text-neutral-500 truncate">{{ s.label }}</p>
+                        <p class="text-xl sm:text-2xl font-elegant font-bold text-ink tabular-nums leading-none">{{ s.value }}</p>
+                        <p class="text-[10px] sm:text-xs font-bold uppercase tracking-wider text-neutral-400 mt-1 truncate">{{ s.label }}</p>
                     </div>
                 </div>
             </div>
 
-            <!-- Tabs -->
-            <div class="flex items-center gap-1 sm:gap-2 mb-6 border-b border-neutral-200 overflow-x-auto">
+            <!-- Tab bar -->
+            <div class="flex items-center gap-1 mb-6 bg-paper border border-neutral-200 rounded-2xl p-1 w-fit shadow-sm overflow-x-auto">
                 <button
                     v-for="tab in [
                         { id: 'overview', label: 'Overview', icon: User },
-                        { id: 'orders', label: 'Orders', icon: ShoppingBag },
+                        { id: 'orders',   label: 'Orders',   icon: ShoppingBag },
                         { id: 'security', label: 'Security', icon: ShieldCheck },
                     ]"
                     :key="tab.id"
                     @click="activeTab = tab.id"
                     :class="[
-                        'inline-flex items-center gap-1.5 sm:gap-2 px-3 sm:px-4 py-3 text-sm font-bold border-b-2 transition-colors whitespace-nowrap shrink-0',
+                        'inline-flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-semibold transition-all duration-200 whitespace-nowrap shrink-0',
                         activeTab === tab.id
-                            ? 'border-ink text-ink'
-                            : 'border-transparent text-neutral-500 hover:text-ink'
+                            ? 'bg-ink text-paper shadow-sm'
+                            : 'text-neutral-500 hover:text-ink hover:bg-neutral-50'
                     ]"
                 >
                     <component :is="tab.icon" class="w-4 h-4" />
@@ -269,192 +302,231 @@ onMounted(() => {
                 </button>
             </div>
 
-            <!-- Overview -->
+            <!-- ── Overview Tab ──────────────────────────────── -->
             <div v-if="activeTab === 'overview'" class="grid lg:grid-cols-3 gap-6">
-                <div class="lg:col-span-2 bg-paper border border-neutral-200 rounded-2xl p-6 lg:p-8 space-y-6">
-                    <div class="flex items-center justify-between">
-                        <h2 class="text-xl font-bold text-ink">Personal info</h2>
+
+                <!-- Personal info form -->
+                <div class="lg:col-span-2 bg-paper border border-neutral-200 rounded-2xl shadow-sm overflow-hidden">
+                    <div class="px-6 py-5 border-b border-neutral-100 flex items-center justify-between">
+                        <h2 class="text-base font-bold text-ink">Personal info</h2>
                         <transition name="slide-fade">
-                            <span v-if="isSaved" class="text-xs font-bold text-accent flex items-center gap-1">
-                                <Save class="w-3 h-3" />
+                            <span v-if="isSaved" class="inline-flex items-center gap-1 text-xs font-bold text-accent">
+                                <CheckCircle class="w-3.5 h-3.5" />
                                 Saved
                             </span>
                         </transition>
                     </div>
 
-                    <div class="grid sm:grid-cols-2 gap-4">
-                        <div>
-                            <label class="text-xs font-bold uppercase tracking-wider text-neutral-500 mb-1.5 block">Full name</label>
-                            <input v-model="profile.name" :disabled="!isEditing" class="input-base disabled:bg-neutral-50 disabled:text-neutral-500 transition-all duration-200 focus:ring-2 focus:ring-neutral-400" />
+                    <div class="p-6 space-y-5">
+                        <div class="grid sm:grid-cols-2 gap-4">
+                            <div class="space-y-1.5">
+                                <label class="text-[10px] font-bold uppercase tracking-widest text-neutral-400 flex items-center gap-1.5">
+                                    <User class="w-3 h-3" /> Full name
+                                </label>
+                                <input v-model="profile.name" :disabled="!isEditing"
+                                    class="input-base disabled:bg-neutral-50 disabled:text-neutral-500 disabled:cursor-default" />
+                            </div>
+                            <div class="space-y-1.5">
+                                <label class="text-[10px] font-bold uppercase tracking-widest text-neutral-400 flex items-center gap-1.5">
+                                    <Mail class="w-3 h-3" /> Email
+                                </label>
+                                <input v-model="profile.email" :disabled="!isEditing" type="email"
+                                    class="input-base disabled:bg-neutral-50 disabled:text-neutral-500 disabled:cursor-default" />
+                            </div>
+                            <div class="space-y-1.5">
+                                <label class="text-[10px] font-bold uppercase tracking-widest text-neutral-400 flex items-center gap-1.5">
+                                    <Phone class="w-3 h-3" /> Phone
+                                </label>
+                                <input v-model="profile.phone" :disabled="!isEditing"
+                                    class="input-base disabled:bg-neutral-50 disabled:text-neutral-500 disabled:cursor-default" />
+                            </div>
+                            <div class="space-y-1.5">
+                                <label class="text-[10px] font-bold uppercase tracking-widest text-neutral-400 flex items-center gap-1.5">
+                                    <MapPin class="w-3 h-3" /> Location
+                                </label>
+                                <input v-model="profile.location" :disabled="!isEditing"
+                                    class="input-base disabled:bg-neutral-50 disabled:text-neutral-500 disabled:cursor-default" />
+                            </div>
                         </div>
-                        <div>
-                            <label class="text-xs font-bold uppercase tracking-wider text-neutral-500 mb-1.5 block">Email</label>
-                            <input v-model="profile.email" :disabled="!isEditing" type="email" class="input-base disabled:bg-neutral-50 disabled:text-neutral-500" />
+                        <div class="space-y-1.5">
+                            <label class="text-[10px] font-bold uppercase tracking-widest text-neutral-400">Bio</label>
+                            <textarea v-model="profile.bio" :disabled="!isEditing" rows="3"
+                                class="input-base disabled:bg-neutral-50 disabled:text-neutral-500 disabled:cursor-default resize-none"></textarea>
                         </div>
-                        <div>
-                            <label class="text-xs font-bold uppercase tracking-wider text-neutral-500 mb-1.5 block">Phone</label>
-                            <input v-model="profile.phone" :disabled="!isEditing" class="input-base disabled:bg-neutral-50 disabled:text-neutral-500" />
+
+                        <div v-if="isEditing" class="flex gap-2 pt-1">
+                            <button @click="save" :disabled="isSaving" class="btn-accent gap-2">
+                                <Loader2 v-if="isSaving" class="w-4 h-4 animate-spin" />
+                                <Save v-else class="w-4 h-4" />
+                                {{ isSaving ? 'Saving…' : 'Save changes' }}
+                            </button>
+                            <button @click="isEditing = false" class="btn-outline">Cancel</button>
                         </div>
-                        <div>
-                            <label class="text-xs font-bold uppercase tracking-wider text-neutral-500 mb-1.5 block">Location</label>
-                            <input v-model="profile.location" :disabled="!isEditing" class="input-base disabled:bg-neutral-50 disabled:text-neutral-500" />
-                        </div>
-                    </div>
-                    <div>
-                        <label class="text-xs font-bold uppercase tracking-wider text-neutral-500 mb-1.5 block">Bio</label>
-                        <textarea v-model="profile.bio" :disabled="!isEditing" rows="3" class="input-base disabled:bg-neutral-50 disabled:text-neutral-500 resize-none"></textarea>
-                    </div>
-                    <div v-if="isEditing" class="flex gap-2 pt-2">
-                        <button @click="save" :disabled="isSaving" class="btn-accent active:scale-[0.97] transition-all duration-200">
-                            <Loader2 v-if="isSaving" class="w-4 h-4 animate-spin" />
-                            <Save v-else class="w-4 h-4" />
-                            {{ isSaving ? 'Saving...' : 'Save changes' }}
-                        </button>
-                        <button @click="isEditing = false" class="btn-outline active:scale-[0.97] transition-all duration-200">Cancel</button>
                     </div>
                 </div>
 
-                <div class="space-y-6">
-                    <div class="bg-paper border border-neutral-200 rounded-2xl p-6">
-                        <h3 class="text-sm font-bold uppercase tracking-[0.2em] text-ink mb-4">Account</h3>
-                        <div class="space-y-3 text-sm">
-                            <div class="flex items-center justify-between">
+                <!-- Right column -->
+                <div class="space-y-4">
+                    <!-- Account summary -->
+                    <div class="bg-paper border border-neutral-200 rounded-2xl shadow-sm overflow-hidden">
+                        <div class="px-5 py-4 border-b border-neutral-100">
+                            <h3 class="text-[10px] font-bold uppercase tracking-widest text-neutral-400">Account</h3>
+                        </div>
+                        <div class="p-5 space-y-3">
+                            <div class="flex items-center justify-between text-sm">
                                 <span class="text-neutral-500">Plan</span>
-                                <span class="font-bold text-ink">Premium</span>
+                                <span class="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full bg-accent/10 text-accent text-xs font-bold">Premium</span>
                             </div>
-                            <div class="flex items-center justify-between">
+                            <div class="flex items-center justify-between text-sm">
                                 <span class="text-neutral-500">Member since</span>
-                                <span class="font-bold text-ink">{{ profile.joined }}</span>
+                                <span class="font-semibold text-ink">{{ profile.joined }}</span>
                             </div>
-                            <div class="flex items-center justify-between">
+                            <div class="flex items-center justify-between text-sm">
                                 <span class="text-neutral-500">Status</span>
-                                <span class="inline-flex items-center gap-1 text-xs font-bold text-accent">
-                                    <span class="w-1.5 h-1.5 rounded-full bg-accent pulse-dot"></span>
+                                <span class="inline-flex items-center gap-1.5 text-xs font-bold text-success">
+                                    <span class="w-1.5 h-1.5 rounded-full bg-success pulse-dot"></span>
                                     Active
                                 </span>
                             </div>
                         </div>
                     </div>
 
-                    <!-- Quick link to orders -->
-                    <div class="bg-paper border border-neutral-200 rounded-2xl p-6">
-                        <h3 class="text-sm font-bold uppercase tracking-[0.2em] text-ink mb-4">Quick links</h3>
-                        <div class="space-y-2">
-                            <button @click="activeTab = 'orders'" class="w-full flex items-center justify-between p-3 rounded-xl hover:bg-neutral-50 transition-colors text-left">
-                                <span class="flex items-center gap-3">
-                                    <ShoppingBag class="w-4 h-4 text-neutral-500" />
-                                    <span class="text-sm font-medium text-ink">My orders</span>
-                                </span>
-                                <ChevronRight class="w-4 h-4 text-neutral-400" />
+                    <!-- Quick links -->
+                    <div class="bg-paper border border-neutral-200 rounded-2xl shadow-sm overflow-hidden">
+                        <div class="px-5 py-4 border-b border-neutral-100">
+                            <h3 class="text-[10px] font-bold uppercase tracking-widest text-neutral-400">Quick links</h3>
+                        </div>
+                        <div class="p-2">
+                            <button
+                                @click="activeTab = 'orders'"
+                                class="w-full flex items-center gap-3 px-3 py-3 rounded-xl hover:bg-neutral-50 transition-colors text-left group/ql"
+                            >
+                                <div class="w-8 h-8 rounded-lg bg-neutral-100 flex items-center justify-center shrink-0 group-hover/ql:bg-ink group-hover/ql:text-paper transition-colors">
+                                    <ShoppingBag class="w-4 h-4 text-neutral-500 group-hover/ql:text-paper" />
+                                </div>
+                                <span class="flex-1 text-sm font-medium text-ink">My orders</span>
+                                <ChevronRight class="w-4 h-4 text-neutral-300 group-hover/ql:text-ink group-hover/ql:translate-x-0.5 transition-all" />
                             </button>
-                            <router-link to="/track-order" class="w-full flex items-center justify-between p-3 rounded-xl hover:bg-neutral-50 transition-colors text-left">
-                                <span class="flex items-center gap-3">
-                                    <Truck class="w-4 h-4 text-neutral-500" />
-                                    <span class="text-sm font-medium text-ink">Track order</span>
-                                </span>
-                                <ChevronRight class="w-4 h-4 text-neutral-400" />
+                            <router-link
+                                to="/track-order"
+                                class="w-full flex items-center gap-3 px-3 py-3 rounded-xl hover:bg-neutral-50 transition-colors group/ql"
+                            >
+                                <div class="w-8 h-8 rounded-lg bg-neutral-100 flex items-center justify-center shrink-0 group-hover/ql:bg-ink group-hover/ql:text-paper transition-colors">
+                                    <Truck class="w-4 h-4 text-neutral-500 group-hover/ql:text-paper" />
+                                </div>
+                                <span class="flex-1 text-sm font-medium text-ink">Track order</span>
+                                <ChevronRight class="w-4 h-4 text-neutral-300 group-hover/ql:text-ink group-hover/ql:translate-x-0.5 transition-all" />
+                            </router-link>
+                            <router-link
+                                to="/wishlist"
+                                class="w-full flex items-center gap-3 px-3 py-3 rounded-xl hover:bg-neutral-50 transition-colors group/ql"
+                            >
+                                <div class="w-8 h-8 rounded-lg bg-neutral-100 flex items-center justify-center shrink-0 group-hover/ql:bg-ink group-hover/ql:text-paper transition-colors">
+                                    <Heart class="w-4 h-4 text-neutral-500 group-hover/ql:text-paper" />
+                                </div>
+                                <span class="flex-1 text-sm font-medium text-ink">Wishlist</span>
+                                <ChevronRight class="w-4 h-4 text-neutral-300 group-hover/ql:text-ink group-hover/ql:translate-x-0.5 transition-all" />
                             </router-link>
                         </div>
                     </div>
                 </div>
             </div>
 
-            <!-- Orders Tab -->
-            <div v-else-if="activeTab === 'orders'" class="space-y-6">
+            <!-- ── Orders Tab ─────────────────────────────────── -->
+            <div v-else-if="activeTab === 'orders'" class="space-y-5">
                 <div class="flex items-center justify-between">
                     <div>
                         <h2 class="text-xl font-bold text-ink">Order history</h2>
-                        <p v-if="!ordersLoading" class="text-sm text-neutral-500 mt-1">
-                            {{ totalOrders }} {{ totalOrders === 1 ? 'order' : 'total orders' }}
+                        <p v-if="!ordersLoading" class="text-sm text-neutral-500 mt-0.5">
+                            {{ totalOrders }} {{ totalOrders === 1 ? 'order' : 'orders' }}
                         </p>
                     </div>
-                    <button @click="fetchOrders" :disabled="ordersLoading" class="btn-ghost text-sm gap-1.5">
+                    <button @click="fetchOrders" :disabled="ordersLoading"
+                        class="inline-flex items-center gap-2 px-4 py-2 text-sm font-semibold text-ink bg-paper border border-neutral-200 rounded-xl hover:bg-neutral-50 transition-colors disabled:opacity-50 shadow-sm">
                         <RefreshCw class="w-4 h-4" :class="{ 'animate-spin': ordersLoading }" />
                         Refresh
                     </button>
                 </div>
 
-                <!-- Error state -->
-                <div v-if="ordersError && orders.length === 0" class="card-flat border-l-4 border-danger p-6">
-                    <div class="flex items-center gap-3">
-                        <AlertCircle class="w-6 h-6 text-danger shrink-0" />
-                        <div>
-                            <h3 class="font-bold text-ink text-sm">Failed to load orders</h3>
-                            <p class="text-neutral-600 text-sm mt-0.5">{{ ordersError }}</p>
+                <!-- Error -->
+                <div v-if="ordersError && orders.length === 0"
+                    class="flex items-start gap-4 p-5 bg-danger/5 border border-danger/20 rounded-2xl">
+                    <div class="w-10 h-10 rounded-xl bg-danger/10 flex items-center justify-center shrink-0">
+                        <AlertCircle class="w-5 h-5 text-danger" />
+                    </div>
+                    <div class="flex-1 min-w-0">
+                        <p class="font-semibold text-ink text-sm">Failed to load orders</p>
+                        <p class="text-neutral-500 text-sm mt-0.5">{{ ordersError }}</p>
+                    </div>
+                    <button @click="fetchOrders" class="btn-primary text-xs shrink-0 py-2 px-3">
+                        <RefreshCw class="w-3.5 h-3.5" /> Retry
+                    </button>
+                </div>
+
+                <!-- Skeleton -->
+                <div v-if="ordersLoading && orders.length === 0" class="space-y-3">
+                    <div v-for="i in 4" :key="'sk-' + i"
+                        class="bg-paper border border-neutral-200 rounded-2xl p-5 animate-pulse flex items-center gap-4">
+                        <div class="w-12 h-12 bg-neutral-100 rounded-xl shrink-0"></div>
+                        <div class="flex-1 space-y-2">
+                            <div class="h-4 bg-neutral-100 rounded-lg w-28"></div>
+                            <div class="h-3 bg-neutral-100 rounded-lg w-44"></div>
                         </div>
-                        <button @click="fetchOrders" class="btn-primary text-sm gap-1.5 shrink-0 ml-auto">
-                            <RefreshCw class="w-3.5 h-3.5" />
-                            Retry
-                        </button>
+                        <div class="space-y-2 text-right">
+                            <div class="h-4 bg-neutral-100 rounded-lg w-16"></div>
+                            <div class="h-5 bg-neutral-100 rounded-full w-20"></div>
+                        </div>
                     </div>
                 </div>
 
-                <!-- Loading skeleton -->
-                <div v-if="ordersLoading && orders.length === 0" class="space-y-3 animate-pulse">
-                    <div v-for="i in 4" :key="'sk-order-' + i" class="card-flat p-5">
-                        <div class="flex items-center gap-4">
-                            <div class="w-12 h-12 bg-neutral-200 rounded-xl"></div>
-                            <div class="flex-1 space-y-2">
-                                <div class="h-4 bg-neutral-200 rounded w-32"></div>
-                                <div class="h-3 bg-neutral-200 rounded w-48"></div>
-                            </div>
-                            <div class="text-right space-y-2">
-                                <div class="h-4 bg-neutral-200 rounded w-20"></div>
-                                <div class="h-6 bg-neutral-200 rounded-full w-24"></div>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-
-                <!-- Empty state -->
-                <div v-else-if="!ordersLoading && orders.length === 0 && !ordersError" class="card-flat text-center py-16">
-                    <div class="w-20 h-20 rounded-full bg-neutral-100 flex items-center justify-center mx-auto mb-5">
-                        <ShoppingBag class="w-10 h-10 text-neutral-400" />
+                <!-- Empty -->
+                <div v-else-if="!ordersLoading && orders.length === 0 && !ordersError"
+                    class="bg-paper border border-neutral-200 rounded-2xl shadow-sm text-center py-20">
+                    <div class="w-20 h-20 rounded-2xl bg-neutral-100 flex items-center justify-center mx-auto mb-5">
+                        <ShoppingBag class="w-9 h-9 text-neutral-300" />
                     </div>
                     <h3 class="text-lg font-bold text-ink mb-2">No orders yet</h3>
-                    <p class="text-neutral-500 mb-6 max-w-sm mx-auto">You haven't placed any orders yet. Start shopping to see your order history here.</p>
+                    <p class="text-neutral-500 mb-7 max-w-xs mx-auto text-sm">Start shopping to see your order history here.</p>
                     <router-link to="/product" class="btn-accent shine-effect inline-flex">
-                        Start shopping
-                        <ArrowRight class="w-4 h-4" />
+                        Start shopping <ArrowRight class="w-4 h-4" />
                     </router-link>
                 </div>
 
-                <!-- Order cards -->
+                <!-- Order list -->
                 <div v-else class="space-y-3">
                     <div
-                        v-for="order in orders"
-                        :key="order.orderId"
-                        class="card-flat p-4 sm:p-5 hover:shadow-md transition-all cursor-pointer group"
+                        v-for="order in orders" :key="order.orderId"
                         @click="openOrderDetail(order)"
+                        class="bg-paper border border-neutral-200 rounded-2xl p-4 sm:p-5 shadow-sm hover:shadow-md hover:border-neutral-300 hover:-translate-y-0.5 transition-all duration-200 cursor-pointer group"
                     >
-                        <div class="flex items-start sm:items-center gap-4">
-                            <!-- Status icon -->
-                            <div class="w-10 h-10 sm:w-12 sm:h-12 rounded-xl bg-neutral-100 flex items-center justify-center shrink-0 group-hover:bg-neutral-200 transition-colors">
-                                <component :is="getStatusConfig(order.status).icon" class="w-5 h-5 text-ink" />
+                        <div class="flex items-center gap-4">
+                            <!-- Icon -->
+                            <div class="w-11 h-11 rounded-xl bg-neutral-50 border border-neutral-200 flex items-center justify-center shrink-0 group-hover:bg-ink group-hover:border-ink transition-all duration-200">
+                                <component :is="getStatusConfig(order.status).icon" class="w-5 h-5 text-neutral-500 group-hover:text-white transition-colors duration-200" />
                             </div>
 
-                            <!-- Order info -->
+                            <!-- Info -->
                             <div class="flex-1 min-w-0">
                                 <div class="flex items-center gap-2 flex-wrap">
-                                    <span class="font-bold text-ink tabular-nums group-hover:text-accent transition-colors">#{{ order.orderId }}</span>
+                                    <span class="font-bold text-ink tabular-nums text-sm group-hover:text-accent transition-colors">#{{ order.orderId }}</span>
                                     <span :class="['px-2 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider border', getStatusConfig(order.status).color]">
                                         {{ getStatusConfig(order.status).label }}
                                     </span>
                                 </div>
-                                <div class="flex items-center gap-2 mt-1 text-xs text-neutral-500">
+                                <div class="flex items-center gap-2 mt-1 text-xs text-neutral-400">
                                     <Calendar class="w-3 h-3" />
-                                    <span>{{ formatDate(order.createdAt) }}</span>
-                                    <span class="text-neutral-300">&middot;</span>
+                                    {{ formatDate(order.createdAt) }}
+                                    <span class="text-neutral-200">&bull;</span>
                                     <Package class="w-3 h-3" />
-                                    <span>{{ order.itemCount || 0 }} {{ (order.itemCount || 0) === 1 ? 'item' : 'items' }}</span>
+                                    {{ order.itemCount || 0 }} {{ (order.itemCount || 0) === 1 ? 'item' : 'items' }}
                                 </div>
                             </div>
 
-                            <!-- Total & Arrow -->
+                            <!-- Price + cta -->
                             <div class="text-right shrink-0">
-                                <p class="text-base sm:text-lg font-bold text-ink tabular-nums group-hover:text-accent transition-colors">${{ formatPrice(order.totalAmount) }}</p>
-                                <div class="flex items-center justify-end gap-1 mt-1 text-xs text-neutral-400 group-hover:text-ink transition-colors">
-                                    <span>Details</span>
+                                <p class="text-base font-bold text-ink tabular-nums group-hover:text-accent transition-colors">${{ formatPrice(order.totalAmount) }}</p>
+                                <div class="flex items-center justify-end gap-0.5 mt-1 text-[11px] text-neutral-400 group-hover:text-accent transition-colors">
+                                    Details
                                     <ChevronRight class="w-3 h-3 group-hover:translate-x-0.5 transition-transform" />
                                 </div>
                             </div>
@@ -463,189 +535,211 @@ onMounted(() => {
                 </div>
             </div>
 
-            <!-- Security -->
+            <!-- ── Security Tab ───────────────────────────────── -->
             <div v-else-if="activeTab === 'security'" class="grid lg:grid-cols-2 gap-6">
-                <div class="bg-paper border border-neutral-200 rounded-2xl p-6 space-y-4">
-                    <h3 class="text-lg font-bold text-ink">Password</h3>
-                    <p class="text-sm text-neutral-500">Update your password to keep your account secure.</p>
-                    <input type="password" placeholder="Current password" class="input-base" />
-                    <input type="password" placeholder="New password" class="input-base" />
-                    <input type="password" placeholder="Confirm new password" class="input-base" />
-                    <button class="btn-primary">Update password</button>
-                </div>
-                <div class="bg-paper border border-neutral-200 rounded-2xl p-6 space-y-4">
-                    <h3 class="text-lg font-bold text-ink">Two-factor authentication</h3>
-                    <p class="text-sm text-neutral-500">Add an extra layer of security to your account.</p>
-                    <div class="flex items-center justify-between p-4 bg-neutral-50 rounded-xl">
-                        <div>
-                            <p class="text-sm font-bold text-ink">Authenticator app</p>
-                            <p class="text-xs text-neutral-500">Use an app like Authy or Google Authenticator.</p>
+                <!-- Password -->
+                <div class="bg-paper border border-neutral-200 rounded-2xl shadow-sm overflow-hidden">
+                    <div class="px-6 py-5 border-b border-neutral-100 flex items-center gap-3">
+                        <div class="w-9 h-9 rounded-xl bg-neutral-100 flex items-center justify-center">
+                            <ShieldCheck class="w-4.5 h-4.5 text-ink" />
                         </div>
-                        <button class="btn-outline">Enable</button>
+                        <div>
+                            <h3 class="text-base font-bold text-ink">Password</h3>
+                            <p class="text-xs text-neutral-400">Keep your account secure</p>
+                        </div>
+                    </div>
+                    <div class="p-6 space-y-4">
+                        <div class="space-y-1.5">
+                            <label class="text-[10px] font-bold uppercase tracking-widest text-neutral-400">Current password</label>
+                            <input type="password" placeholder="••••••••" class="input-base" />
+                        </div>
+                        <div class="space-y-1.5">
+                            <label class="text-[10px] font-bold uppercase tracking-widest text-neutral-400">New password</label>
+                            <input type="password" placeholder="••••••••" class="input-base" />
+                        </div>
+                        <div class="space-y-1.5">
+                            <label class="text-[10px] font-bold uppercase tracking-widest text-neutral-400">Confirm new password</label>
+                            <input type="password" placeholder="••••••••" class="input-base" />
+                        </div>
+                        <button class="btn-primary w-full">Update password</button>
+                    </div>
+                </div>
+
+                <!-- 2FA -->
+                <div class="bg-paper border border-neutral-200 rounded-2xl shadow-sm overflow-hidden">
+                    <div class="px-6 py-5 border-b border-neutral-100 flex items-center gap-3">
+                        <div class="w-9 h-9 rounded-xl bg-neutral-100 flex items-center justify-center">
+                            <SettingsIcon class="w-4.5 h-4.5 text-ink" />
+                        </div>
+                        <div>
+                            <h3 class="text-base font-bold text-ink">Two-factor authentication</h3>
+                            <p class="text-xs text-neutral-400">Extra layer of security</p>
+                        </div>
+                    </div>
+                    <div class="p-6 space-y-3">
+                        <div class="flex items-center justify-between p-4 bg-neutral-50 border border-neutral-200 rounded-xl hover:border-neutral-300 transition-colors">
+                            <div>
+                                <p class="text-sm font-semibold text-ink">Authenticator app</p>
+                                <p class="text-xs text-neutral-500 mt-0.5">Authy, Google Authenticator</p>
+                            </div>
+                            <button class="btn-outline text-xs py-1.5 px-3">Enable</button>
+                        </div>
+                        <div class="flex items-center justify-between p-4 bg-neutral-50 border border-neutral-200 rounded-xl hover:border-neutral-300 transition-colors">
+                            <div>
+                                <p class="text-sm font-semibold text-ink">SMS verification</p>
+                                <p class="text-xs text-neutral-500 mt-0.5">Receive codes by text message</p>
+                            </div>
+                            <button class="btn-outline text-xs py-1.5 px-3">Enable</button>
+                        </div>
                     </div>
                 </div>
             </div>
         </section>
 
-        <!-- Order Detail Modal -->
+        <!-- ── Order Detail Modal ─────────────────────────────── -->
         <Teleport to="body">
             <div
                 v-if="showDetailModal"
                 @click="closeOrderDetail"
-                class="fixed inset-0 z-70 flex items-center justify-center p-4"
+                class="fixed inset-0 z-70 flex items-end sm:items-center justify-center p-0 sm:p-4"
             >
-                <div class="absolute inset-0 bg-ink/50 backdrop-blur-sm"></div>
+                <div class="absolute inset-0 bg-ink/60 backdrop-blur-sm"></div>
 
                 <div
                     @click.stop
-                    class="relative bg-paper rounded-2xl shadow-xl w-full max-w-2xl max-h-[85vh] overflow-y-auto animate-fade-up"
+                    class="relative bg-paper rounded-t-3xl sm:rounded-2xl shadow-2xl w-full sm:max-w-2xl max-h-[92vh] sm:max-h-[85vh] overflow-y-auto animate-fade-up"
                 >
-                    <!-- Modal Header -->
-                    <div class="flex items-center justify-between px-6 py-5 border-b border-neutral-200 sticky top-0 bg-paper z-10">
+                    <!-- Handle (mobile) -->
+                    <div class="sm:hidden flex justify-center pt-3 pb-1">
+                        <div class="w-10 h-1 rounded-full bg-neutral-200"></div>
+                    </div>
+
+                    <!-- Header -->
+                    <div class="flex items-center justify-between px-6 py-4 border-b border-neutral-100 sticky top-0 bg-paper/95 backdrop-blur-sm z-10">
                         <div class="flex items-center gap-3">
-                            <div class="w-10 h-10 rounded-xl bg-neutral-100 flex items-center justify-center">
+                            <div class="w-10 h-10 rounded-xl bg-neutral-50 border border-neutral-200 flex items-center justify-center">
                                 <component :is="getStatusConfig(selectedOrder?.status).icon" class="w-5 h-5 text-ink" />
                             </div>
                             <div>
                                 <h3 class="font-bold text-ink">Order #{{ selectedOrder?.orderId }}</h3>
-                                <p class="text-xs text-neutral-500">{{ formatDateFull(selectedOrder?.createdAt) }}</p>
+                                <p class="text-xs text-neutral-400">{{ formatDateFull(selectedOrder?.createdAt) }}</p>
                             </div>
                         </div>
                         <button
                             @click="closeOrderDetail"
-                            class="w-9 h-9 rounded-full hover:bg-neutral-100 flex items-center justify-center transition-colors"
+                            class="w-9 h-9 rounded-xl hover:bg-neutral-100 flex items-center justify-center transition-colors"
                             aria-label="Close"
                         >
-                            <X class="w-5 h-5" />
+                            <X class="w-4.5 h-4.5 text-ink" />
                         </button>
                     </div>
 
                     <!-- Loading -->
-                    <div v-if="orderDetailLoading" class="p-10 text-center">
+                    <div v-if="orderDetailLoading" class="p-12 text-center">
                         <Loader2 class="w-8 h-8 animate-spin text-accent mx-auto" />
                     </div>
 
-                    <!-- Modal Body -->
+                    <!-- Body -->
                     <div v-else-if="selectedOrder" class="p-6 space-y-6">
-                        <!-- Status Badge -->
-                        <div class="flex items-center justify-between flex-wrap gap-3">
+                        <!-- Summary row -->
+                        <div class="flex items-center justify-between p-4 bg-neutral-50 rounded-2xl border border-neutral-100">
                             <span :class="['px-3 py-1.5 rounded-full text-xs font-bold uppercase tracking-wider border', getStatusConfig(selectedOrder.status).color]">
                                 {{ getStatusConfig(selectedOrder.status).label }}
                             </span>
-                            <span class="text-2xl font-bold text-ink tabular-nums">${{ formatPrice(selectedOrder.totalAmount) }}</span>
+                            <span class="text-2xl font-elegant font-bold text-ink tabular-nums">${{ formatPrice(selectedOrder.totalAmount) }}</span>
                         </div>
 
-                        <!-- Items list -->
+                        <!-- Items -->
                         <div>
-                            <h4 class="text-xs font-bold uppercase tracking-[0.2em] text-neutral-500 mb-3">
-                                Items ({{ selectedOrder.items?.length || 0 }})
+                            <h4 class="text-[10px] font-bold uppercase tracking-widest text-neutral-400 mb-3">
+                                Items · {{ selectedOrder.items?.length || 0 }}
                             </h4>
                             <div class="space-y-2">
                                 <div
-                                    v-for="item in selectedOrder.items"
-                                    :key="item.orderItemId"
-                                    class="flex items-center justify-between p-3 bg-neutral-50 rounded-xl"
+                                    v-for="item in selectedOrder.items" :key="item.orderItemId"
+                                    class="flex items-center justify-between p-3.5 bg-neutral-50 rounded-xl border border-neutral-100"
                                 >
                                     <div class="flex items-center gap-3 min-w-0">
-                                        <div class="w-9 h-9 rounded-lg bg-paper border border-neutral-200 flex items-center justify-center text-xs font-bold text-neutral-600 shrink-0">
+                                        <div class="w-9 h-9 rounded-lg bg-paper border border-neutral-200 flex items-center justify-center text-xs font-bold text-ink shrink-0">
                                             {{ item.quantity }}
                                         </div>
                                         <div class="min-w-0">
                                             <p class="text-sm font-semibold text-ink truncate">{{ item.productName || `Product #${item.productId}` }}</p>
-                                            <p v-if="item.sku" class="text-[10px] text-neutral-500 font-mono">SKU: {{ item.sku }}</p>
+                                            <p v-if="item.sku" class="text-[10px] text-neutral-400 font-mono">{{ item.sku }}</p>
                                         </div>
                                     </div>
-                                    <span class="text-sm font-bold text-ink tabular-nums shrink-0 ml-2">
-                                        ${{ formatPrice(item.unitPrice) }}
-                                    </span>
+                                    <span class="text-sm font-bold text-ink tabular-nums shrink-0 ml-3">${{ formatPrice(item.unitPrice) }}</span>
                                 </div>
                             </div>
                         </div>
 
-                        <!-- Order Timeline -->
+                        <!-- Timeline -->
                         <div>
-                            <h4 class="text-xs font-bold uppercase tracking-[0.2em] text-neutral-500 mb-3">Order timeline</h4>
-                            <div class="space-y-3">
-                                <div class="flex items-start gap-3">
-                                    <div class="w-6 h-6 rounded-full bg-success flex items-center justify-center shrink-0 mt-0.5">
-                                        <CheckCircle class="w-3 h-3 text-white" />
+                            <h4 class="text-[10px] font-bold uppercase tracking-widest text-neutral-400 mb-4">Order timeline</h4>
+                            <div class="relative pl-4">
+                                <!-- vertical line -->
+                                <div class="absolute left-[11px] top-3 bottom-3 w-px bg-neutral-200"></div>
+
+                                <div class="space-y-5">
+                                    <div class="flex items-start gap-4 relative">
+                                        <div class="w-6 h-6 rounded-full bg-success flex items-center justify-center shrink-0 z-10 -ml-1">
+                                            <CheckCircle class="w-3 h-3 text-white" />
+                                        </div>
+                                        <div class="-mt-0.5">
+                                            <p class="text-sm font-semibold text-ink">Order placed</p>
+                                            <p class="text-xs text-neutral-400 mt-0.5">{{ formatDateFull(selectedOrder.createdAt) }}</p>
+                                        </div>
                                     </div>
-                                    <div>
-                                        <p class="text-sm font-semibold text-ink">Order placed</p>
-                                        <p class="text-xs text-neutral-500">{{ formatDateFull(selectedOrder.createdAt) }}</p>
+
+                                    <div class="flex items-start gap-4 relative" :class="{ 'opacity-40': selectedOrder.status === 'pending' }">
+                                        <div class="w-6 h-6 rounded-full flex items-center justify-center shrink-0 z-10 -ml-1"
+                                            :class="['confirmed','shipped','delivered'].includes(selectedOrder.status) ? 'bg-success' : 'bg-neutral-200'">
+                                            <component :is="['confirmed','shipped','delivered'].includes(selectedOrder.status) ? CheckCircle : Clock" class="w-3 h-3 text-white" />
+                                        </div>
+                                        <div class="-mt-0.5">
+                                            <p class="text-sm font-semibold text-ink">Payment confirmed</p>
+                                            <p class="text-xs text-neutral-400 mt-0.5">{{ ['confirmed','shipped','delivered'].includes(selectedOrder.status) ? formatDateFull(selectedOrder.updatedAt) : 'Awaiting confirmation' }}</p>
+                                        </div>
                                     </div>
-                                </div>
-                                <div
-                                    class="flex items-start gap-3"
-                                    :class="{ 'opacity-50': selectedOrder.status === 'pending' }"
-                                >
-                                    <div
-                                        class="w-6 h-6 rounded-full flex items-center justify-center shrink-0 mt-0.5"
-                                        :class="['pending', 'confirmed', 'shipped', 'delivered'].includes(selectedOrder.status) ? 'bg-success' : 'bg-neutral-200'"
-                                    >
-                                        <component :is="['pending', 'confirmed', 'shipped', 'delivered'].includes(selectedOrder.status) ? CheckCircle : Clock" class="w-3 h-3 text-white" />
+
+                                    <div class="flex items-start gap-4 relative" :class="{ 'opacity-40': !['shipped','delivered'].includes(selectedOrder.status) }">
+                                        <div class="w-6 h-6 rounded-full flex items-center justify-center shrink-0 z-10 -ml-1"
+                                            :class="['shipped','delivered'].includes(selectedOrder.status) ? 'bg-accent' : 'bg-neutral-200'">
+                                            <Truck class="w-3 h-3 text-white" />
+                                        </div>
+                                        <div class="-mt-0.5">
+                                            <p class="text-sm font-semibold text-ink">Shipped</p>
+                                            <p class="text-xs text-neutral-400 mt-0.5">{{ ['shipped','delivered'].includes(selectedOrder.status) ? 'On its way' : 'Not yet shipped' }}</p>
+                                        </div>
                                     </div>
-                                    <div>
-                                        <p class="text-sm font-semibold text-ink">Payment confirmed</p>
-                                        <p class="text-xs text-neutral-500">{{ ['pending', 'confirmed', 'shipped', 'delivered'].includes(selectedOrder.status) ? formatDateFull(selectedOrder.updatedAt) : 'Awaiting confirmation' }}</p>
-                                    </div>
-                                </div>
-                                <div
-                                    class="flex items-start gap-3"
-                                    :class="{ 'opacity-50': !['shipped', 'delivered'].includes(selectedOrder.status) }"
-                                >
-                                    <div
-                                        class="w-6 h-6 rounded-full flex items-center justify-center shrink-0 mt-0.5"
-                                        :class="['shipped', 'delivered'].includes(selectedOrder.status) ? 'bg-accent' : 'bg-neutral-200'"
-                                    >
-                                        <Truck class="w-3 h-3 text-white" />
-                                    </div>
-                                    <div>
-                                        <p class="text-sm font-semibold text-ink">Shipped</p>
-                                        <p class="text-xs text-neutral-500">{{ ['shipped', 'delivered'].includes(selectedOrder.status) ? 'On its way' : 'Not yet shipped' }}</p>
-                                    </div>
-                                </div>
-                                <div
-                                    class="flex items-start gap-3"
-                                    :class="{ 'opacity-50': selectedOrder.status !== 'delivered' }"
-                                >
-                                    <div
-                                        class="w-6 h-6 rounded-full flex items-center justify-center shrink-0 mt-0.5"
-                                        :class="selectedOrder.status === 'delivered' ? 'bg-success' : 'bg-neutral-200'"
-                                    >
-                                        <MapPin class="w-3 h-3 text-white" />
-                                    </div>
-                                    <div>
-                                        <p class="text-sm font-semibold text-ink">Delivered</p>
-                                        <p class="text-xs text-neutral-500">{{ selectedOrder.status === 'delivered' ? formatDateFull(selectedOrder.updatedAt) : 'Awaiting delivery' }}</p>
+
+                                    <div class="flex items-start gap-4 relative" :class="{ 'opacity-40': selectedOrder.status !== 'delivered' }">
+                                        <div class="w-6 h-6 rounded-full flex items-center justify-center shrink-0 z-10 -ml-1"
+                                            :class="selectedOrder.status === 'delivered' ? 'bg-success' : 'bg-neutral-200'">
+                                            <MapPin class="w-3 h-3 text-white" />
+                                        </div>
+                                        <div class="-mt-0.5">
+                                            <p class="text-sm font-semibold text-ink">Delivered</p>
+                                            <p class="text-xs text-neutral-400 mt-0.5">{{ selectedOrder.status === 'delivered' ? formatDateFull(selectedOrder.updatedAt) : 'Awaiting delivery' }}</p>
+                                        </div>
                                     </div>
                                 </div>
                             </div>
                         </div>
                     </div>
 
-                    <!-- Modal Footer -->
-                    <div class="px-6 py-4 border-t border-neutral-200 bg-neutral-50 sticky bottom-0 flex gap-3">
-                        <button
-                            @click="closeOrderDetail"
-                            class="btn-outline flex-1 text-sm"
-                        >
-                            Close
-                        </button>
-                        <button
-                            @click="reorderAll"
-                            class="btn-accent flex-1 text-sm gap-1.5"
-                        >
-                            <RefreshCw class="w-3.5 h-3.5" />
-                            Reorder all
+                    <!-- Footer -->
+                    <div class="px-6 py-4 border-t border-neutral-100 bg-neutral-50 sticky bottom-0 flex gap-2">
+                        <button @click="closeOrderDetail" class="btn-outline flex-1 text-sm py-2.5">Close</button>
+                        <button @click="reorderAll" class="btn-accent flex-1 text-sm py-2.5 gap-1.5">
+                            <RefreshCw class="w-3.5 h-3.5" /> Reorder all
                         </button>
                         <router-link
                             :to="`/track-order?orderId=${selectedOrder?.orderId}`"
                             @click="closeOrderDetail"
-                            class="btn-primary flex-1 text-sm gap-1.5 inline-flex items-center justify-center"
+                            class="btn-primary flex-1 text-sm py-2.5 gap-1.5 inline-flex items-center justify-center"
                         >
-                            <Truck class="w-3.5 h-3.5" />
-                            Track
+                            <Truck class="w-3.5 h-3.5" /> Track
                         </router-link>
                     </div>
                 </div>
@@ -665,5 +759,19 @@ onMounted(() => {
 .slide-fade-leave-to {
     opacity: 0;
     transform: translateY(-4px);
+}
+
+/* Order timeline styles */
+.order-timeline {
+    position: relative;
+}
+.order-timeline::before {
+    content: '';
+    position: absolute;
+    left: 14px;
+    top: 24px;
+    bottom: 0;
+    width: 2px;
+    background: #e4e4e7;
 }
 </style>
