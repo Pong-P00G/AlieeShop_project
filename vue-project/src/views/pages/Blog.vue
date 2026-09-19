@@ -2,7 +2,7 @@
 import { ref, computed } from 'vue'
 import { useHead } from '@unhead/vue'
 import { RouterLink } from 'vue-router'
-import { BookOpen, Calendar, Clock, ArrowRight, Search, Tag, User, Sparkles } from 'lucide-vue-next'
+import { BookOpen, Calendar, Clock, ArrowRight, Search, User, Sparkles } from 'lucide-vue-next'
 import LazyImage from '../../components/LazyImage.vue'
 
 useHead({

@@ -9,29 +9,6 @@ const NOTIFICATION_COLS = `
     n.createdat AS created_at
 `;
 
-export const ensureTable = async () => {
-    await db.query(`
-        CREATE TABLE IF NOT EXISTS notifications (
-            notificationid INTEGER GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
-            userid         INTEGER REFERENCES users(usersid) ON DELETE CASCADE,
-            type           VARCHAR(50)  NOT NULL DEFAULT 'system'
-                            CHECK (type IN ('order', 'user', 'stock', 'system', 'product')),
-            message        TEXT         NOT NULL,
-            link           VARCHAR(500),
-            isread         BOOLEAN      DEFAULT FALSE,
-            createdat      TIMESTAMPTZ  DEFAULT NOW()
-        );
-        CREATE INDEX IF NOT EXISTS idx_notifications_read ON notifications(isread, createdat DESC);
-        CREATE INDEX IF NOT EXISTS idx_notifications_user ON notifications(userid, createdat DESC);
-    `);
-
-    // Add userid column if upgrading from existing table
-    try {
-        await db.query(`ALTER TABLE notifications ADD COLUMN IF NOT EXISTS userid INTEGER REFERENCES users(usersid) ON DELETE CASCADE`);
-        await db.query(`CREATE INDEX IF NOT EXISTS idx_notifications_user ON notifications(userid, createdat DESC)`);
-    } catch { /* column already exists */ }
-};
-
 export const getAllNotifications = async (page = 1, pageSize = 20, type = null) => {
     const offset = (page - 1) * pageSize;
     let whereClause = '';
@@ -196,35 +173,9 @@ export const markAllAsRead = async () => {
     return row ? true : false;
 };
 
-export const pruneOldNotifications = async (keepCount = 100) => {
-    await db.query(
-        `DELETE FROM notifications
-         WHERE notificationid NOT IN (
-             SELECT notificationid FROM notifications ORDER BY createdat DESC LIMIT $1
-         )`,
-        [keepCount]
-    );
-};
-
 // ============================================================
 // AUDIT LOG
 // ============================================================
-
-export const ensureAuditTable = async () => {
-    await db.query(`
-        CREATE TABLE IF NOT EXISTS audit_log (
-            auditid     INTEGER GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
-            action      VARCHAR(50)  NOT NULL,
-            entity_type VARCHAR(50)  NOT NULL,
-            entity_id   INTEGER,
-            entity_name VARCHAR(255),
-            performed_by VARCHAR(100),
-            details     TEXT,
-            createdat   TIMESTAMPTZ  DEFAULT NOW()
-        );
-        CREATE INDEX IF NOT EXISTS idx_audit_log_created ON audit_log(createdat DESC);
-    `);
-};
 
 export const createAuditLog = async ({ action, entity_type, entity_id, entity_name, performed_by, details }) => {
     const { rows } = await db.query(
@@ -236,48 +187,9 @@ export const createAuditLog = async ({ action, entity_type, entity_id, entity_na
     return rows[0];
 };
 
-export const getAuditLogs = async (limit = 50, offset = 0) => {
-    const { rows } = await db.query(
-        `SELECT auditid AS id, action, entity_type, entity_id, entity_name, performed_by, details, createdat AS created_at
-         FROM audit_log
-         ORDER BY createdat DESC
-         LIMIT $1 OFFSET $2`,
-        [limit, offset]
-    );
-    return rows;
-};
-
-export const getAuditLogsByType = async (entityType, limit = 50, offset = 0) => {
-    const { rows } = await db.query(
-        `SELECT auditid AS id, action, entity_type, entity_id, entity_name, performed_by, details, createdat AS created_at
-         FROM audit_log
-         WHERE entity_type = $1
-         ORDER BY createdat DESC
-         LIMIT $2 OFFSET $3`,
-        [entityType, limit, offset]
-    );
-    return rows;
-};
-
 // ============================================================
 // NOTIFICATION PREFERENCES
 // ============================================================
-
-export const ensurePrefsTable = async () => {
-    await db.query(`
-        CREATE TABLE IF NOT EXISTS notification_preferences (
-            userid          INTEGER PRIMARY KEY REFERENCES users(usersid) ON DELETE CASCADE,
-            order_updates   BOOLEAN DEFAULT TRUE,
-            promotions      BOOLEAN DEFAULT FALSE,
-            newsletter      BOOLEAN DEFAULT TRUE,
-            product_alerts  BOOLEAN DEFAULT TRUE,
-            sms             BOOLEAN DEFAULT FALSE,
-            push_enabled    BOOLEAN DEFAULT FALSE,
-            createdat       TIMESTAMPTZ DEFAULT NOW(),
-            updatedat       TIMESTAMPTZ DEFAULT NOW()
-        );
-    `);
-};
 
 export const getPreferences = async (userId) => {
     const { rows: [row] } = await db.query(
@@ -316,20 +228,6 @@ export const upsertPreferences = async (userId, prefs) => {
 // ============================================================
 // PUSH SUBSCRIPTIONS
 // ============================================================
-
-export const ensurePushTable = async () => {
-    await db.query(`
-        CREATE TABLE IF NOT EXISTS push_subscriptions (
-            subscriptionid INTEGER GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
-            userid         INTEGER REFERENCES users(usersid) ON DELETE CASCADE,
-            endpoint       TEXT NOT NULL,
-            p256dh_key     TEXT NOT NULL,
-            auth_key       TEXT NOT NULL,
-            createdat      TIMESTAMPTZ DEFAULT NOW(),
-            UNIQUE (userid, endpoint)
-        );
-    `);
-};
 
 export const savePushSubscription = async (userId, subscription) => {
     const { rows: [row] } = await db.query(
@@ -372,13 +270,4 @@ export const deletePushSubscriptionByEndpoint = async (endpoint) => {
         [endpoint]
     );
     return result.rowCount > 0;
-};
-
-export const getPushSubscriptionsByUserIds = async (userIds) => {
-    if (!userIds || userIds.length === 0) return [];
-    const { rows } = await db.query(
-        `SELECT * FROM push_subscriptions WHERE userid = ANY($1::int[])`,
-        [userIds]
-    );
-    return rows;
 };

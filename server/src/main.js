@@ -24,6 +24,7 @@ import shippingRoutes from './routes/shippingRoutes.js'
 import wishlistRoutes from './routes/wishlistRoutes.js'
 import settingsRoutes from './routes/settingsRoutes.js'
 import userNotificationRoutes from './routes/userNotificationRoutes.js'
+import heroRoutes from './routes/heroRoutes.js'
 
 const app = express();
 
@@ -104,6 +105,7 @@ app.use('/api/shipping', shippingRoutes);
 app.use('/api/wishlist', wishlistRoutes);
 app.use('/api/settings', settingsRoutes);
 app.use('/api/notifications', userNotificationRoutes);
+app.use('/api/hero', heroRoutes);
 
 // Product images are served from object storage (Cloudflare R2) through its
 // public CDN URLs, so the API no longer mounts a local static directory.

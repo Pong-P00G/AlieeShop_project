@@ -98,6 +98,22 @@ body {
   background: var(--color-neutral-700);
 }
 
+/* Every scroll container hides its scrollbar but stays fully scrollable —
+   drawers, dropdowns, tables, carousels, sidebars, and the storefront's own
+   document scrollbar. Scrolling itself is never disabled.
+
+   The single exception is the dashboard's <main> content region: the dashboard
+   shell is h-screen overflow-hidden, so <main> is its only scroll indicator and
+   hiding it would leave the dashboard with none. The dashboard's document never
+   scrolls, so this exception is never visible outside <main>. */
+:where(:not(main)) {
+  scrollbar-width: none;      /* Firefox, Chrome 121+ */
+  -ms-overflow-style: none;   /* legacy Edge / IE */
+}
+:where(:not(main))::-webkit-scrollbar {
+  display: none;              /* Chrome, Safari, Edge (Chromium) */
+}
+
 /* =========================================================
    COMPONENT UTILITIES
    ========================================================= */

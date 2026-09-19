@@ -55,11 +55,3 @@ export const categoryExists = async (categoryId) => {
     );
     return rows.length > 0;
 };
-
-export const getCategoryByName = async (name) => {
-    const { rows } = await db.query(
-        `SELECT categoriesid AS category_id, categoryname AS name FROM category WHERE categoryname = $1`,
-        [name]
-    );
-    return rows[0];
-};

@@ -1,5 +1,5 @@
 <script setup>
-import { Newspaper, Download, Mail, ExternalLink, Calendar, ArrowRight } from 'lucide-vue-next'
+import { Newspaper, Download, Mail, Calendar, ArrowRight } from 'lucide-vue-next'
 
 const pressReleases = [
     { date: '2026-06-15', title: 'AlieeShop Launches Sustainable Collection', summary: 'New eco-friendly line made from recycled materials debuts this summer.', category: 'Product Launch' },

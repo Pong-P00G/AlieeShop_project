@@ -31,7 +31,6 @@ import { useProductStore } from '../stores/product.js';
 import { productAPI } from '../api/products/productApi.js';
 import LazyImage from '../components/LazyImage.vue';
 import WishListBtn from '../components/WishListBtn.vue';
-import ProductCarousel from '../components/ProductCarousel.vue';
 import HeroCarousel from '../components/HeroCarousel.vue';
 import TabbedProductCarousel from '../components/TabbedProductCarousel.vue';
 import ProductBadge from '../components/ProductBadge.vue';
@@ -43,17 +42,13 @@ const productStore = useProductStore();
 const loadingProducts = ref(false);
 const loadingSections = ref(true);
 
-// ── Real product data from store ──
+// Real product data from store
 const featuredProducts = ref([]);
 const newArrivals = ref([]);
 const bestSellers = ref([]);
 const comingSoon = ref([]);
 const allProducts = ref([]);
 
-/**
- * Map API product to component format with dynamic badges.
- * Badge priority: Coming Soon > New > Best Seller > Popular
- */
 function mapProduct(p, sectionContext = '') {
     let badge = '';
     let badgeVariant = 'ink';
@@ -152,7 +147,7 @@ function mapProduct(p, sectionContext = '') {
     };
 }
 
-// ── Fetch all sections on mount ──
+// Fetch all sections on mount
 onMounted(async () => {
     loadingSections.value = true;
     loadingProducts.value = true;
@@ -185,7 +180,7 @@ onMounted(async () => {
     }
 });
 
-// ── Filters & Pagination (apply to allProducts) ──
+// Filters & Pagination (apply to allProducts)
 const filters = ref({ q: '', category: '', tag: '', minPrice: null, maxPrice: null, sort: 'new' });
 const view = ref('grid');
 const page = ref(1);
@@ -234,11 +229,6 @@ function prevPage() {
     if (page.value > 1) page.value--;
 }
 
-/**
- * Quick-add from a product card. Products with variants are redirected to
- * the detail page instead — a variantless line would fail stock checks at
- * checkout (or drain the wrong stock bucket), so force an explicit choice.
- */
 async function addToCart(p) {
     try {
         const res = await productAPI.getProductById(p.id);
@@ -270,7 +260,7 @@ const promises = [
     { icon: Headphones, title: '24/7 support', desc: 'Real humans, real help' },
 ];
 
-// ── Section helper: carousel sections config ──
+// Section helper: carousel sections config
 const carouselSections = computed(() => [
     {
         key: 'featured',
@@ -310,7 +300,7 @@ const carouselSections = computed(() => [
 <template>
     <div class="min-h-screen bg-paper">
         <!-- Hero Carousel -->
-        <section class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 mt-6">
+        <section class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
             <HeroCarousel />
         </section>
 
@@ -617,7 +607,7 @@ const carouselSections = computed(() => [
                             v-for="p in paginated"
                             :key="p.id"
                             v-show="view === 'grid'"
-                            class="bg-paper border border-neutral-200 rounded-2xl overflow-hidden transition-all duration-300 hover:-translate-y-1 hover:border-ink hover:shadow-[0_12px_32px_-8px_rgb(0_0_0_/_0.12)] group/card"
+                            class="bg-paper border border-neutral-200 rounded-2xl overflow-hidden transition-all duration-300 hover:-translate-y-1 hover:border-ink hover:shadow-[0_12px_32px_-8px_rgb(0_0_0_/0.12)] group/card"
                         >
                             <RouterLink :to="'/product/' + p.id" class="block">
                                 <div class="relative h-48 sm:h-56 bg-neutral-100 overflow-hidden">

@@ -22,7 +22,6 @@ import { useAuthStore } from '../stores/auth.js';
 import { useShopStore } from '../stores/shop.js';
 import { useUIStore } from '../stores/ui.js';
 import { useNotificationStore } from '../stores/notifications.js';
-import ThemeToggle from './ThemeToggle.vue';
 
 const route = useRoute();
 const router = useRouter();
@@ -311,20 +310,19 @@ watch(route, () => {
                     <div class="w-px h-6 bg-neutral-300 mx-2"></div>
 
                     <!-- Desktop User Area -->
-                    <div class="relative" id="user-dropdown">
+                    <div class="relative shrink-0" id="user-dropdown">
                         <template v-if="isAuthenticated && user">
                             <button
                                 @click="toggleDropdown"
-                                class="ml-1 inline-flex items-center justify-center gap-2 h-10 px-4 text-sm font-bold text-paper bg-ink rounded-full hover:bg-neutral-800 transition-all duration-300 shadow-sm hover:shadow-md"
+                                class="ml-1 inline-flex items-center justify-center gap-2 h-10 pl-1.5 pr-3 text-sm font-bold text-paper bg-ink rounded-full hover:bg-neutral-800 transition-all duration-300 shadow-sm hover:shadow-md shrink-0 whitespace-nowrap"
                                 :aria-expanded="isDropdownOpen"
                                 aria-haspopup="true"
                                 aria-label="User menu"
                             >
-                                <div class="w-6 h-6 rounded-full bg-accent flex items-center justify-center text-xs font-bold text-white">
+                                <span class="w-7 h-7 rounded-full bg-accent ring-2 ring-paper/20 flex items-center justify-center text-xs font-bold text-white shrink-0">
                                     {{ initials }}
-                                </div>
-                                <span class="max-w-25 truncate">{{ user.username || user.email || 'User' }}</span>
-                                <ChevronDown class="w-3.5 h-3.5 transition-transform duration-200" :class="{ 'rotate-180': isDropdownOpen }" />
+                                </span>
+                                <ChevronDown class="w-3.5 h-3.5 opacity-80 transition-transform duration-200 shrink-0" :class="{ 'rotate-180': isDropdownOpen }" />
                             </button>
 
                             <!-- Dropdown -->
@@ -376,7 +374,7 @@ watch(route, () => {
                         <template v-else>
                             <RouterLink
                                 to="/login"
-                                class="ml-1 inline-flex items-center justify-center gap-2 h-10 px-5 text-sm font-bold text-paper bg-ink rounded-full hover:bg-neutral-800 transition-all duration-300 shadow-sm hover:shadow-md"
+                                class="ml-1 inline-flex items-center justify-center gap-2 h-10 px-5 text-sm font-bold text-paper bg-ink rounded-full hover:bg-neutral-800 transition-all duration-300 shadow-sm hover:shadow-md shrink-0 whitespace-nowrap"
                             >
                                 <User class="w-4 h-4" />
                                 Sign In
@@ -422,7 +420,7 @@ watch(route, () => {
                     <div class="flex justify-between items-center p-6 border-b border-neutral-200">
                         <div class="flex items-center gap-2">
                             <span class="text-xl font-elegant text-ink">
-                                <span class="font-light">ALIE</span><span class="font-bold">SHOP</span>
+                                <span class="font-light">ALIEE</span><span class="font-bold text-orange-400">SHOP</span>
                             </span>
                             <span class="w-1.5 h-1.5 bg-accent rounded-full pulse-dot"></span>
                         </div>
@@ -445,7 +443,7 @@ watch(route, () => {
 
                     <!-- Mobile Search -->
                     <div class="p-6 border-b border-neutral-200">
-                        <button @click="openSearch" class="w-full text-left">
+                        <button @click="closeMenu(); openSearch()" class="w-full text-left">
                             <div class="relative">
                                 <input
                                     type="text"
@@ -516,16 +514,22 @@ watch(route, () => {
                                 >{{ cartCount }}</span>
                             </RouterLink>
                         </div>
-                        <button @click="toggleNotifications" class="flex items-center justify-center gap-2 p-3 rounded-xl bg-paper border border-neutral-200 hover:border-ink transition-colors w-full">
-                                <Bell class="w-4 h-4 text-ink" />
-                                <span class="text-xs font-bold uppercase tracking-wider text-ink">
-                                    Notifications
-                                    <span v-if="unreadCount > 0" class="ml-1 text-accent">({{ unreadCount }})</span>
-                                </span>
-                            </button>
-                        </div>
+                        <RouterLink
+                            v-if="isAuthenticated"
+                            :to="allNotificationsLink"
+                            @click="closeMenu"
+                            class="relative flex items-center justify-center gap-2 p-3 rounded-xl bg-paper border border-neutral-200 hover:border-ink transition-colors w-full"
+                        >
+                            <Bell class="w-4 h-4 text-ink" />
+                            <span class="text-xs font-bold uppercase tracking-wider text-ink">Notifications</span>
+                            <span
+                                v-if="unreadCount > 0"
+                                class="absolute -top-1.5 -right-1.5 min-w-5 h-5 px-1 bg-danger text-white text-[10px] font-bold rounded-full flex items-center justify-center ring-2 ring-paper"
+                            >{{ unreadCount > 9 ? '9+' : unreadCount }}</span>
+                        </RouterLink>
+
+                        <!-- Mobile User Area -->
                         <div class="space-y-2 mt-3">
-                            <!-- Mobile User Area -->
                         <template v-if="isAuthenticated && user">
                             <div class="space-y-2">
                                 <div class="flex items-center gap-3 px-3 py-2.5 bg-paper border border-neutral-200 rounded-xl">
@@ -573,6 +577,7 @@ watch(route, () => {
                                 Sign In / Join Now
                             </RouterLink>
                         </template>
+                        </div>
                     </div>
                 </div>
             </div>
@@ -581,10 +586,11 @@ watch(route, () => {
 </template>
 
 <style scoped>
-header {
-    -webkit-backdrop-filter: blur(12px);
-    backdrop-filter: blur(12px);
-}
+/* NOTE: deliberately no backdrop-filter on <header> itself. A non-none
+   backdrop-filter makes the element the containing block for position:fixed
+   descendants, which would size the mobile drawer's inset-0 to the ~80px header
+   instead of the viewport and squash the whole menu into a thin strip. The blur
+   is applied by the header's own background layer instead. */
 
 /* Cart badge bounce animation */
 @keyframes cart-bounce {
@@ -599,5 +605,16 @@ header {
 :deep(.animate-cart-bounce),
 .animate-cart-bounce {
     animation: cart-bounce 0.5s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+/* User dropdown entrance */
+.dropdown-fade-enter-active,
+.dropdown-fade-leave-active {
+    transition: opacity 0.15s ease, transform 0.15s ease;
+}
+.dropdown-fade-enter-from,
+.dropdown-fade-leave-to {
+    opacity: 0;
+    transform: translateY(-4px);
 }
 </style>

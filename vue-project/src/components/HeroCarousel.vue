@@ -3,6 +3,7 @@ import LazyImage from './LazyImage.vue';
 import { ref, onMounted, onUnmounted, computed } from 'vue';
 import { RouterLink } from 'vue-router';
 import { ChevronLeft, ChevronRight, ArrowRight, Sparkles } from 'lucide-vue-next';
+import { heroAPI } from '../api/heroApi.js';
 
 const currentSlide = ref(0);
 const autoPlayInterval = ref(null);
@@ -30,7 +31,9 @@ const resetParallax = () => {
     mouseY.value = 0;
 };
 
-const heroSlides = [
+// Used until the API answers, and as the permanent fallback when the store
+// has no hero slides configured. Mirrors the seeded rows in add_hero_slides.sql.
+const FALLBACK_SLIDES = [
     {
         id: 1,
         eyebrow: 'Summer Collection 2024',
@@ -66,21 +69,32 @@ const heroSlides = [
     },
 ];
 
+const FALLBACK_SETTINGS = {
+    sectionEnabled: true,
+    autoplayEnabled: true,
+    autoplayInterval: 5000,
+    secondaryLabel: 'Our Story',
+    secondaryLink: '/about',
+};
+
+const slides = ref(FALLBACK_SLIDES);
+const settings = ref({ ...FALLBACK_SETTINGS });
+
+const heroSlides = computed(() => slides.value);
+
 const nextSlide = () => {
-    currentSlide.value = (currentSlide.value + 1) % heroSlides.length;
+    if (heroSlides.value.length === 0) return;
+    currentSlide.value = (currentSlide.value + 1) % heroSlides.value.length;
     slideKey.value++;
 };
 const prevSlide = () => {
-    currentSlide.value = currentSlide.value === 0 ? heroSlides.length - 1 : currentSlide.value - 1;
+    if (heroSlides.value.length === 0) return;
+    currentSlide.value = currentSlide.value === 0 ? heroSlides.value.length - 1 : currentSlide.value - 1;
     slideKey.value++;
 };
 const goToSlide = (index) => {
     currentSlide.value = index;
     slideKey.value++;
-};
-const startAutoPlay = () => {
-    stopAutoPlay();
-    autoPlayInterval.value = setInterval(() => nextSlide(), 5000);
 };
 const stopAutoPlay = () => {
     if (autoPlayInterval.value) {
@@ -88,13 +102,46 @@ const stopAutoPlay = () => {
         autoPlayInterval.value = null;
     }
 };
+const startAutoPlay = () => {
+    stopAutoPlay();
+    // A single slide has nothing to rotate to.
+    if (!settings.value.autoplayEnabled || heroSlides.value.length <= 1) return;
+    autoPlayInterval.value = setInterval(() => nextSlide(), settings.value.autoplayInterval);
+};
 
-onMounted(() => startAutoPlay());
+/**
+ * Pull the admin-managed slides + section settings. Any failure leaves the
+ * built-in fallback in place so the homepage always renders a hero.
+ */
+const loadHero = async () => {
+    try {
+        const res = await heroAPI.getHero();
+        const data = res?.data;
+        if (!res?.success || !data) return;
+
+        // A successful response is authoritative — if the admin hid every
+        // slide, the hero is meant to disappear rather than fall back.
+        slides.value = Array.isArray(data.slides) ? data.slides : [];
+        currentSlide.value = 0;
+        slideKey.value++;
+        settings.value = { ...FALLBACK_SETTINGS, ...(data.settings || {}) };
+    } catch {
+        // Storefront hero must never break the page — keep the fallbacks.
+    } finally {
+        startAutoPlay(); // re-arm using the configured interval
+    }
+};
+
+onMounted(() => {
+    startAutoPlay();
+    loadHero();
+});
 onUnmounted(() => stopAutoPlay());
 </script>
 
 <template>
     <section
+        v-if="settings.sectionEnabled && heroSlides.length > 0"
         ref="heroRef"
         class="relative h-105 md:h-130 lg:h-150 overflow-hidden rounded-3xl bg-ink group"
         @mouseenter="stopAutoPlay"
@@ -167,11 +214,12 @@ onUnmounted(() => stopAutoPlay());
                             <ArrowRight class="w-4 h-4 group-hover/cta:translate-x-1 transition-transform" />
                         </RouterLink>
                         <RouterLink
-                            to="/about"
+                            v-if="settings.secondaryLabel && settings.secondaryLink"
+                            :to="settings.secondaryLink"
                             class="inline-flex items-center gap-2 px-7 py-3.5 bg-paper/10 backdrop-blur-md text-paper font-bold text-sm rounded-full border border-paper/20 hover:bg-paper hover:text-ink transition-all duration-300"
                         >
                             <Sparkles class="w-4 h-4" />
-                            Our Story
+                            {{ settings.secondaryLabel }}
                         </RouterLink>
                     </div>
                 </div>

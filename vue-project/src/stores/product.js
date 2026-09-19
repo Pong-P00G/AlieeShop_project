@@ -4,7 +4,6 @@ import { categoryAPI } from '../api/products/categoryApi.js';
 import { imageAPI } from '../api/products/imageApi.js';
 import { variantAPI } from '../api/products/variantApi.js';
 import { stockAPI } from '../api/products/stockApi.js';
-import { discountAPI } from '../api/products/discountApi.js';
 
 export const useProductStore = defineStore('product', {
     state: () => ({

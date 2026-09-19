@@ -2,7 +2,7 @@
 import { ref, computed } from 'vue'
 import { useHead } from '@unhead/vue'
 import { RouterLink } from 'vue-router'
-import { ArrowLeftRight, X, Plus, Star, ShoppingCart, Check, Minus, ArrowRight } from 'lucide-vue-next'
+import { ArrowLeftRight, X, Plus, Star, ShoppingCart, ArrowRight } from 'lucide-vue-next'
 import LazyImage from '../../components/LazyImage.vue'
 
 useHead({

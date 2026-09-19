@@ -84,15 +84,15 @@ onUnmounted(() => {
         @touchend="handleTouchEnd">
         <div
             ref="carousel"
-            class="flex overflow-x-hidden snap-x snap-mandatory scroll-smooth gap-6 pb-8 select-none"
+            class="flex overflow-x-hidden snap-x snap-mandatory scroll-smooth gap-6 select-none"
         >
             <div
                 v-for="p in props.products"
                 :key="p.id"
-                class="snap-center shrink-0 w-full sm:w-[70%] md:w-[45%] lg:w-[72%] bg-paper rounded-2xl border border-neutral-200 p-5 transition-all duration-300 hover:-translate-y-1 hover:border-ink hover:shadow-[0_12px_32px_-8px_rgb(0_0_0_/_0.12)] relative group/card"
+                class="snap-center shrink-0 w-full sm:w-[70%] md:w-[45%] lg:w-[72%] bg-paper transition-all duration-300 hover:-translate-y-1 hover:border-ink hover:shadow-[0_12px_32px_-8px_rgb(0_0_0_/0.12)] relative group/card"
             >
                 <RouterLink :to="p.href" class="block">
-                    <div class="relative rounded-xl overflow-hidden bg-neutral-100 h-64">
+                    <div class="relative overflow-hidden bg-neutral-100 h-64">
                         <LazyImage :src="p.image" :alt="p.name" wrapper-class="h-full w-full" img-class="group-hover/card:scale-110" />
                         <ProductBadge
                             v-if="p.badge"

@@ -1,6 +1,6 @@
 <script setup>
 import { useRouter, RouterLink } from 'vue-router';
-import { Home, ArrowLeft, AlertCircle, Sparkles, Search } from 'lucide-vue-next';
+import { Home, ArrowLeft, AlertCircle, Search } from 'lucide-vue-next';
 
 const router = useRouter();
 

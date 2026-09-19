@@ -12,7 +12,7 @@ A modern, full-featured e-commerce platform built with **Vue 3**, **Express**, a
 - **Vue 3 + Express 5 + PostgreSQL 18** — two independent packages (`vue-project/`, `server/`), each with its own install, `.env`, and test runner.
 - **Layered REST API** — route → controller → service → model, with all SQL confined to models and Joi validation at the edge.
 - **Secure by default** — httpOnly-cookie JWTs with rotating single-use refresh tokens, Helmet, rate limiting, CSRF protection, and owner-or-admin row checks.
-- **RBAC admin dashboard** — analytics, catalog/variant/stock management, discounts, reviews, notifications, and store settings.
+- **RBAC admin dashboard** — analytics, catalog/variant/stock management, discounts, reviews, notifications, store settings, and an admin-managed storefront hero carousel.
 - **Shipped with SEO and PWA extras** — dynamic sitemap/robots, per-route meta tags, and web push notifications.
 - **629 automated tests** — 197 frontend, 256 backend unit, 176 backend integration.
 
@@ -327,6 +327,7 @@ npm run migrate -- --status   # list applied/pending files without changing anyt
 | add_cash_on_delivery.sql | Cash on delivery payment method |
 | add_cod_fee_column.sql | COD fee column |
 | add_discounts_createdat.sql | `discounts.createdat` (used by the admin discounts listing) |
+| add_hero_slides.sql | Storefront hero carousel slides, plus the `hero_*` section settings. Seeds the three slides that were previously hardcoded |
 | add_low_stock_view.sql | Low stock monitoring view |
 | add_notifications.sql | Dashboard notifications and audit log |
 | add_product_tags.sql | Product tags |
@@ -343,16 +344,25 @@ npm run migrate -- --status   # list applied/pending files without changing anyt
 
 ### Product images (object storage)
 
-Product images live in the R2 bucket, not in the repository. Two helper scripts manage them:
+Product images live in the R2 bucket, not in the repository. Three helper scripts manage them:
 
 ```bash
 cd server
 npm run images:migrate   # upload cdn/images/products/* and rewrite their stored URLs
 npm run images:cache     # backfill Cache-Control on objects uploaded before caching was added
+npm run images:audit     # report orphaned objects and stale image rows (read-only)
 ```
 
 Object keys are unique and immutable, so uploads are written with a one-year
 `Cache-Control` (`R2_CACHE_CONTROL` overrides it) that the CDN caches at the edge.
+
+`npm run images:audit` never deletes or writes anything. It compares the
+`productimages` table with the bucket and reports three things: rows whose URL no
+longer points at the R2 origin, rows referencing a file that is missing from the
+bucket (a broken image), and objects no row references (orphans). Orphans
+accumulate because removing a product or image row does not remove the underlying
+object. Pass `-- --fail-on-findings` to exit non-zero when anything is found,
+which makes it usable as a CI check.
 
 ### Base schema
 
@@ -573,6 +583,7 @@ Access to XMLHttpRequest has been blocked by CORS policy
 - Confirm the `R2_*` variables in `server/.env` are set (see `server/.env.example`)
 - Run `npm run images:migrate` once to upload the files in `cdn/images/products/` and rewrite stored image URLs
 - Images uploaded before caching existed? Run `npm run images:cache` to backfill `Cache-Control`
+- Suspect a stale URL or a dead file? Run `npm run images:audit` — it reports stale rows, broken references and orphaned objects without changing anything
 - Images are served from `R2_PUBLIC_BASE_URL` (the bucket's CDN origin), not from the API — a 404 means the object is missing from the bucket or the bucket is not public
 
 ### Authentication not persisting after refresh

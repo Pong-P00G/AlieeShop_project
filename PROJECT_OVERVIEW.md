@@ -93,7 +93,7 @@ E-Commerce Web Application : Aliee Shop
 
 - Developed a built-in admin dashboard with Chart.js analytics, reports, and an
   audit activity log, for managing products, categories, variants, stock,
-  discounts, orders, users, and store settings.
+  discounts, orders, users, store settings, and the storefront hero carousel.
 
 - Built the checkout flow end to end — persisted cart drawer, multi-step
   checkout, shipping method selection, configurable payments including cash on
@@ -402,6 +402,7 @@ Core concepts:
 | **Notifications & audit log** | Personal rows carry a `userid`; broadcast rows do not. |
 | **Roles & permissions** | Roles, permissions, and their assignments back the dashboard RBAC screens. |
 | **Store settings** | Single-row configuration for fees and store-wide options. |
+| **Hero slides** | Admin-managed storefront carousel: per-slide copy, image, CTA, display order and visibility, plus the `hero_*` section settings (autoplay, secondary button). |
 
 Two schema details are easy to trip over:
 

@@ -641,19 +641,3 @@ const toggleSidebar = () => {
         ></div>
     </div>
 </template>
-
-<style scoped>
-::-webkit-scrollbar {
-    width: 6px;
-}
-::-webkit-scrollbar-track {
-    background: transparent;
-}
-::-webkit-scrollbar-thumb {
-    background: #d4d4d8;
-    border-radius: 3px;
-}
-::-webkit-scrollbar-thumb:hover {
-    background: #a1a1aa;
-}
-</style>

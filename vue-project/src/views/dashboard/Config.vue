@@ -3,6 +3,7 @@ import { ref, computed, onMounted } from 'vue';
 import { paymentAPI } from '../../api/paymentApi.js';
 import { settingsAPI } from '../../api/settingsApi.js';
 import { useToast } from '../../composables/useToast.js';
+import HeroSettings from './HeroSettings.vue';
 import {
     Settings as SettingsIcon,
     DollarSign,
@@ -388,6 +389,13 @@ onMounted(loadConfig);
                         </div>
                     </div>
                 </div>
+
+                <!-- ════════════════════════════════════════════════════════════════
+                     SECTION: Storefront Hero
+                     Manages the hero carousel slides + section behaviour.
+                     Self-contained: loads and saves through /api/hero.
+                     ════════════════════════════════════════════════════════════════ -->
+                <HeroSettings />
 
                 <!-- ════════════════════════════════════════════════════════════════
                      SECTION: COD Fee (existing)

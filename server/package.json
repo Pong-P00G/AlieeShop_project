@@ -12,6 +12,7 @@
     "migrate": "node --env-file=.env migrate.js",
     "images:migrate": "node --env-file=.env scripts/migrate-images-to-r2.js",
     "images:cache": "node --env-file=.env scripts/backfill-cache-control.js",
+    "images:audit": "node --env-file=.env scripts/audit-images.js",
     "test": "vitest run",
     "test:integration": "node --env-file=.env ./node_modules/vitest/vitest.mjs run --config vitest.integration.config.js"
   },

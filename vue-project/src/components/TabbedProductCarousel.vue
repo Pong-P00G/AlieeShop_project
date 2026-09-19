@@ -35,7 +35,7 @@ const underlineStyle = computed(() => {
     <div class="w-full">
         <!-- Tab Bar -->
         <div class="relative mb-8">
-            <div class="relative flex items-center bg-neutral-100 rounded-2xl p-1.5 overflow-x-auto scrollbar-none">
+            <div class="relative flex items-center bg-neutral-100 rounded-2xl p-1.5 overflow-x-auto">
                 <!-- Sliding indicator -->
                 <div
                     class="absolute inset-y-1.5 left-1.5 rounded-xl bg-ink shadow-md transition-all duration-500 cubic-bezier(0.34, 1.56, 0.64, 1)"
@@ -56,7 +56,7 @@ const underlineStyle = computed(() => {
                     <span class="hidden sm:inline truncate">{{ section.label }}</span>
                     <span
                         v-if="section.products.length"
-                        class="inline-flex items-center justify-center min-w-[18px] h-[18px] px-1 text-[10px] font-bold rounded-full"
+                        class="inline-flex items-center justify-center min-w-4.5 h-4.5 px-1 text-[10px] font-bold rounded-full"
                         :class="activeTab === index
                             ? 'bg-paper/20 text-paper'
                             : 'bg-neutral-200 text-neutral-600'"
@@ -68,7 +68,7 @@ const underlineStyle = computed(() => {
         </div>
 
         <!-- Content Area -->
-        <div class="relative min-h-[340px]">
+        <div class="relative min-h-85">
             <!-- Loading skeleton -->
             <div v-if="loading" class="animate-pulse">
                 <div class="flex gap-6 overflow-hidden">
@@ -112,11 +112,4 @@ const underlineStyle = computed(() => {
     transform: translateY(-8px) scale(0.97);
 }
 
-.scrollbar-none {
-    -ms-overflow-style: none;
-    scrollbar-width: none;
-}
-.scrollbar-none::-webkit-scrollbar {
-    display: none;
-}
 </style>
