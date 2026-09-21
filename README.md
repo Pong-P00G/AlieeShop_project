@@ -12,7 +12,7 @@ A modern, full-featured e-commerce platform built with **Vue 3**, **Express**, a
 - **Vue 3 + Express 5 + PostgreSQL 18** — two independent packages (`vue-project/`, `server/`), each with its own install, `.env`, and test runner.
 - **Layered REST API** — route → controller → service → model, with all SQL confined to models and Joi validation at the edge.
 - **Secure by default** — httpOnly-cookie JWTs with rotating single-use refresh tokens, Helmet, rate limiting, CSRF protection, and owner-or-admin row checks.
-- **RBAC admin dashboard** — analytics, catalog/variant/stock management, discounts, reviews, notifications, store settings, and an admin-managed storefront hero carousel.
+- **RBAC admin dashboard** — analytics, catalog/variant/stock management, discounts, reviews, notifications, store settings, and admin-managed storefront sections (hero carousel, product carousel).
 - **Shipped with SEO and PWA extras** — dynamic sitemap/robots, per-route meta tags, and web push notifications.
 - **629 automated tests** — 197 frontend, 256 backend unit, 176 backend integration.
 
@@ -330,6 +330,7 @@ npm run migrate -- --status   # list applied/pending files without changing anyt
 | add_hero_slides.sql | Storefront hero carousel slides, plus the `hero_*` section settings. Seeds the three slides that were previously hardcoded |
 | add_low_stock_view.sql | Low stock monitoring view |
 | add_notifications.sql | Dashboard notifications and audit log |
+| add_product_carousel_settings.sql | Seeds the `product_carousel_*` settings for the home page product carousel (heading, autoplay, View-all button, tab order/labels/product counts, and hand-picked products per tab) |
 | add_product_tags.sql | Product tags |
 | remove_password_hash_triggers.sql | Drops legacy DB triggers that double-hashed passwords (app-layer bcrypt is the single source of hashing); keeps `updatedat` auto-update via `trg_touch_updated_at_user` |
 | add_refresh_tokens.sql | Revocable/rotating refresh tokens |
@@ -397,6 +398,8 @@ full contents and how to regenerate the file.
 | /api/roles | Role and permission management |
 | /api/dashboard | Admin dashboard data |
 | /api/settings | Store configuration |
+| /api/hero | Storefront hero carousel (public read, admin CRUD) |
+| /api/product-carousel | Storefront product carousel config (public read, admin update) |
 | /api/notifications | User notifications |
 | /api/images | Image upload and management |
 | /health | Health check endpoint |
@@ -482,7 +485,7 @@ On top of that, every route enforces who may touch a given row:
 
 | Scope | Limit |
 |-------|-------|
-| Global (all routes, per IP) | 200 requests / 15 min |
+| Global (all routes, per IP) | 1000 requests / 15 min (override with `RATE_LIMIT_MAX`) |
 | `POST /api/auth/login`, `/register` | 10 **failed** attempts / 15 min per IP — successful logins are not counted, so a shared/NAT IP is not locked out by someone else |
 | `POST /api/auth/refresh` | 60 / 15 min per IP |
 

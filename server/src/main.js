@@ -25,6 +25,7 @@ import wishlistRoutes from './routes/wishlistRoutes.js'
 import settingsRoutes from './routes/settingsRoutes.js'
 import userNotificationRoutes from './routes/userNotificationRoutes.js'
 import heroRoutes from './routes/heroRoutes.js'
+import productCarouselRoutes from './routes/productCarouselRoutes.js'
 
 const app = express();
 
@@ -42,10 +43,15 @@ if (process.env.NODE_ENV === 'production') {
     app.set('trust proxy', 1);
 }
 
-// Global rate-limit: 200 requests per 15 min per IP
+// Global rate-limit: 1000 requests per 15 min per IP, overridable with
+// RATE_LIMIT_MAX. The SPA spends two hits per state-changing call (the CORS
+// preflight plus the request itself), so the previous ceiling of 200 was being
+// hit by ordinary browsing rather than by abuse.
+const GLOBAL_RATE_LIMIT_MAX = Number(process.env.RATE_LIMIT_MAX) || 1000;
+
 const limiter = rateLimit({
     windowMs: 15 * 60 * 1000,
-    max: 200,
+    max: GLOBAL_RATE_LIMIT_MAX,
     standardHeaders: true,
     legacyHeaders: false,
     message: { success: false, message: 'Too many requests, please try again later.' },
@@ -106,6 +112,7 @@ app.use('/api/wishlist', wishlistRoutes);
 app.use('/api/settings', settingsRoutes);
 app.use('/api/notifications', userNotificationRoutes);
 app.use('/api/hero', heroRoutes);
+app.use('/api/product-carousel', productCarouselRoutes);
 
 // Product images are served from object storage (Cloudflare R2) through its
 // public CDN URLs, so the API no longer mounts a local static directory.

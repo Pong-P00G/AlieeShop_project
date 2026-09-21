@@ -60,6 +60,30 @@ export const getAllProducts = async () => {
     return rows;
 };
 
+/**
+ * Fetch products by id, preserving the order of `ids`.
+ *
+ * The product carousel stores its hand-picked products in display order, and a
+ * single query keeps that order without N round trips. Ids that no longer exist
+ * (deleted products) are skipped rather than returned as holes.
+ */
+export const getProductsByIds = async (ids = []) => {
+    const unique = [...new Set(
+        (Array.isArray(ids) ? ids : [])
+            .map(Number)
+            .filter(id => Number.isInteger(id) && id > 0)
+    )];
+    if (unique.length === 0) return [];
+
+    const { rows } = await db.query(
+        `SELECT ${PRODUCT_COLS} FROM view_products WHERE productsid = ANY($1::int[])`,
+        [unique]
+    );
+
+    const byId = new Map(rows.map(row => [row.product_id, row]));
+    return unique.map(id => byId.get(id)).filter(Boolean);
+};
+
 export const getProductById = async (productId) => {
     const { rows: product } = await db.query(
         `SELECT ${PRODUCT_COLS} FROM view_products WHERE productsid = $1`,

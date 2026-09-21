@@ -29,6 +29,7 @@ import {
 import { useToast } from '../composables/useToast.js';
 import { useProductStore } from '../stores/product.js';
 import { productAPI } from '../api/products/productApi.js';
+import { productCarouselAPI } from '../api/productCarouselApi.js';
 import LazyImage from '../components/LazyImage.vue';
 import WishListBtn from '../components/WishListBtn.vue';
 import HeroCarousel from '../components/HeroCarousel.vue';
@@ -153,12 +154,16 @@ onMounted(async () => {
     loadingProducts.value = true;
 
     try {
+        // The carousel's shape (tab order, labels, products per tab) is
+        // admin-managed, so resolve it before sizing the product queries.
+        await loadCarouselConfig();
+
         // Fetch all sections in parallel
         const [featuredRes, newRes, bestRes, comingRes, allRes] = await Promise.all([
-            productStore.fetchFeaturedProducts(8),
-            productStore.fetchNewArrivals(8),
-            productStore.fetchBestSellers(8),
-            productStore.fetchComingSoon(8),
+            fetchTab('featured', (limit) => productStore.fetchFeaturedProducts(limit)),
+            fetchTab('new-arrivals', (limit) => productStore.fetchNewArrivals(limit)),
+            fetchTab('best-sellers', (limit) => productStore.fetchBestSellers(limit)),
+            fetchTab('coming-soon', (limit) => productStore.fetchComingSoon(limit)),
             productStore.fetchAllProducts(),
         ]);
 
@@ -260,52 +265,102 @@ const promises = [
     { icon: Headphones, title: '24/7 support', desc: 'Real humans, real help' },
 ];
 
-// Section helper: carousel sections config
-const carouselSections = computed(() => [
-    {
-        key: 'featured',
-        label: 'Hand-picked',
-        title: 'Featured this week',
-        icon: Sparkles,
-        products: featuredProducts.value,
-        emptyMsg: 'No featured products available yet.',
-    },
-    {
-        key: 'new-arrivals',
-        label: 'Just landed',
-        title: 'New Arrivals',
-        icon: Clock,
-        products: newArrivals.value,
-        emptyMsg: 'No new arrivals at the moment.',
-    },
-    {
-        key: 'best-sellers',
-        label: 'Trending now',
-        title: 'Best Sellers',
-        icon: TrendingUp,
-        products: bestSellers.value,
-        emptyMsg: 'No best sellers data yet.',
-    },
-    {
-        key: 'coming-soon',
-        label: 'Coming up',
-        title: 'Coming Soon',
-        icon: Zap,
-        products: comingSoon.value,
-        emptyMsg: 'No upcoming products right now.',
-    },
-]);
+// ── Product carousel config ────────────────────────────────────────────────
+// The admin manages the section heading, autoplay and the tab list; these
+// defaults mirror the server defaults so the home page renders even when the
+// config request fails (see server/src/services/productCarouselService.js).
+const DEFAULT_CAROUSEL_SETTINGS = {
+    sectionEnabled: true,
+    eyebrow: 'Discover',
+    title: 'Curated Collections',
+    viewAllLabel: 'View all',
+    viewAllLink: '/product',
+    autoplayEnabled: true,
+    autoplayInterval: 4000,
+};
+
+const DEFAULT_CAROUSEL_TABS = [
+    { key: 'featured', label: 'Hand-picked', title: 'Featured this week', productsPerTab: 8, isActive: true, productIds: [] },
+    { key: 'new-arrivals', label: 'Just landed', title: 'New Arrivals', productsPerTab: 8, isActive: true, productIds: [] },
+    { key: 'best-sellers', label: 'Trending now', title: 'Best Sellers', productsPerTab: 8, isActive: true, productIds: [] },
+    { key: 'coming-soon', label: 'Coming up', title: 'Coming Soon', productsPerTab: 8, isActive: true, productIds: [] },
+];
+
+// A tab key maps to a product query, so the icon and empty-state copy stay in
+// the frontend — the API only carries the editable bits (order, labels, count).
+const TAB_META = {
+    featured: { icon: Sparkles, emptyMsg: 'No featured products available yet.' },
+    'new-arrivals': { icon: Clock, emptyMsg: 'No new arrivals at the moment.' },
+    'best-sellers': { icon: TrendingUp, emptyMsg: 'No best sellers data yet.' },
+    'coming-soon': { icon: Zap, emptyMsg: 'No upcoming products right now.' },
+};
+
+const carouselSettings = ref({ ...DEFAULT_CAROUSEL_SETTINGS });
+const carouselTabs = ref(DEFAULT_CAROUSEL_TABS.map(tab => ({ ...tab })));
+
+const carouselSections = computed(() => {
+    const byTab = {
+        featured: featuredProducts.value,
+        'new-arrivals': newArrivals.value,
+        'best-sellers': bestSellers.value,
+        'coming-soon': comingSoon.value,
+    };
+
+    return carouselTabs.value
+        .filter(tab => tab.isActive !== false)
+        .map(tab => ({
+            key: tab.key,
+            label: tab.label,
+            title: tab.title,
+            icon: TAB_META[tab.key]?.icon,
+            // A tab with hand-picked products renders those instead of its query.
+            products: hasPicks(tab) ? (tab.products || []).map(mapProduct) : (byTab[tab.key] || []),
+            emptyMsg: TAB_META[tab.key]?.emptyMsg || 'No products available yet.',
+        }));
+});
+
+/** How many products the configured tab asks for (falls back to the default). */
+const productsPerTab = (key) => (
+    carouselTabs.value.find(tab => tab.key === key)?.productsPerTab ?? 8
+);
+
+/** True when an admin hand-picked this tab's products. */
+const hasPicks = (tab) => Array.isArray(tab?.productIds) && tab.productIds.length > 0;
+
+const hasPicksFor = (key) => hasPicks(carouselTabs.value.find(tab => tab.key === key));
+
+/** Skip the automatic query entirely for a tab that renders picked products. */
+const fetchTab = (key, fetcher) => (
+    hasPicksFor(key) ? Promise.resolve({ success: true, data: [] }) : fetcher(productsPerTab(key))
+);
+
+/**
+ * Load the admin-managed carousel config. Any failure leaves the built-in
+ * defaults in place so the home page never loses its product carousel.
+ */
+const loadCarouselConfig = async () => {
+    try {
+        const res = await productCarouselAPI.getConfig();
+        const data = res?.data;
+        if (!res?.success || !data) return;
+
+        carouselSettings.value = { ...DEFAULT_CAROUSEL_SETTINGS, ...(data.settings || {}) };
+        if (Array.isArray(data.tabs) && data.tabs.length > 0) {
+            carouselTabs.value = data.tabs;
+        }
+    } catch {
+        // Storefront must never break — keep the fallbacks.
+    }
+};
 </script>
 
 <template>
     <div class="min-h-screen bg-paper">
-        <!-- Hero Carousel -->
-        <section class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+        <section class="w-full">
             <HeroCarousel />
         </section>
 
-        <!-- Promise strip -->
-        <section class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 mt-10 sm:mt-12">
+        <section class="w-full py-8 px-4 sm:px-6 lg:px-8 mt-10 sm:mt-12">
             <div class="grid grid-cols-2 lg:grid-cols-4 gap-2 sm:gap-3">
                 <div
                     v-for="p in promises"
@@ -323,23 +378,26 @@ const carouselSections = computed(() => [
             </div>
         </section>
 
-        <!-- ── Tabbed Product Carousel ── -->
-        <section class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 mt-12 sm:mt-16">
+        <!-- Tabbed Product Carousel — heading, tabs and autoplay are admin-managed -->
+        <section v-if="carouselSettings.sectionEnabled && carouselSections.length > 0"
+            class="w-full py-6 px-4 sm:px-6 lg:px-8 mt-12 sm:mt-16">
             <div class="flex flex-col sm:flex-row sm:items-end sm:justify-between gap-3 mb-6">
                 <div>
-                    <span class="inline-flex items-center gap-2 text-xs font-bold uppercase tracking-[0.2em] text-accent mb-2">
+                    <span v-if="carouselSettings.eyebrow"
+                        class="inline-flex items-center gap-2 text-xs font-bold uppercase tracking-[0.2em] text-accent mb-2">
                         <Sparkles class="w-3.5 h-3.5" />
-                        Discover
+                        {{ carouselSettings.eyebrow }}
                     </span>
-                    <h2 class="text-2xl sm:text-3xl md:text-4xl font-elegant font-bold text-ink">
-                        Curated Collections
+                    <h2 v-if="carouselSettings.title" class="text-2xl sm:text-3xl md:text-4xl font-elegant font-bold text-ink">
+                        {{ carouselSettings.title }}
                     </h2>
                 </div>
                 <RouterLink
-                    to="/product"
+                    v-if="carouselSettings.viewAllLabel && carouselSettings.viewAllLink"
+                    :to="carouselSettings.viewAllLink"
                     class="hidden md:inline-flex items-center gap-2 text-sm font-bold text-ink hover:text-accent transition-colors"
                 >
-                    View all
+                    {{ carouselSettings.viewAllLabel }}
                     <ArrowRight class="w-4 h-4" />
                 </RouterLink>
             </div>
@@ -347,11 +405,13 @@ const carouselSections = computed(() => [
             <TabbedProductCarousel
                 :sections="carouselSections"
                 :loading="loadingSections"
+                :autoplay="carouselSettings.autoplayEnabled"
+                :interval="carouselSettings.autoplayInterval"
             />
         </section>
 
-        <!-- ── Filters + Products ── -->
-        <section class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 mt-16 sm:mt-20">
+        <!-- ── Filters + Products — full-bleed with a small edge gutter ── -->
+        <section class="w-full py-6 px-4 sm:px-6 lg:px-8 mt-16 sm:mt-20">
             <div class="flex flex-col sm:flex-row sm:items-end sm:justify-between mb-8 gap-4 flex-wrap">
                 <div>
                     <span class="inline-flex items-center gap-2 text-xs font-bold uppercase tracking-[0.2em] text-accent mb-2">
@@ -721,9 +781,9 @@ const carouselSections = computed(() => [
             </div>
         </section>
 
-        <!-- CTA Banner -->
+        <!-- CTA Banner — full-bleed: edge-to-edge, no padding -->
         <section class="mt-16 sm:mt-24 bg-ink overflow-hidden">
-            <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-14 sm:py-20 grid lg:grid-cols-2 gap-10 sm:gap-12 items-center">
+            <div class="py-14 sm:py-20 grid lg:grid-cols-2 gap-10 sm:gap-12 items-center">
                 <div class="space-y-6 text-paper">
                     <span class="inline-flex items-center gap-2 text-xs font-bold uppercase tracking-[0.2em] text-accent">
                         <Sparkles class="w-4 h-4" />

@@ -5,6 +5,9 @@ import ProductCarousel from './ProductCarousel.vue';
 const props = defineProps({
     sections: { type: Array, default: () => [] },
     loading: { type: Boolean, default: false },
+    // Passed straight through to the carousel; both are admin-managed.
+    autoplay: { type: Boolean, default: true },
+    interval: { type: Number, default: 4000 },
 });
 
 const emit = defineEmits(['tab-change']);
@@ -71,8 +74,8 @@ const underlineStyle = computed(() => {
         <div class="relative min-h-85">
             <!-- Loading skeleton -->
             <div v-if="loading" class="animate-pulse">
-                <div class="flex gap-6 overflow-hidden">
-                    <div v-for="i in 4" :key="'skel-' + i" class="shrink-0 w-full sm:w-[70%] md:w-[45%] lg:w-[72%] bg-neutral-100 rounded-2xl h-72"></div>
+                <div class="flex gap-5 overflow-hidden">
+                    <div v-for="i in 4" :key="'skel-' + i" class="shrink-0 w-full sm:w-[70%] md:w-[48%] lg:w-[48%] bg-neutral-100 rounded-2xl h-72"></div>
                 </div>
             </div>
 
@@ -90,6 +93,8 @@ const underlineStyle = computed(() => {
                     v-if="!loading && activeSection && activeSection.products.length > 0"
                     :key="activeSection.key"
                     :products="activeSection.products"
+                    :autoplay="autoplay"
+                    :interval="interval"
                 />
             </transition>
         </div>

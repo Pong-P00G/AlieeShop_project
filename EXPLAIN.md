@@ -307,7 +307,8 @@ requests anyway.
 
 **Rate limiting / brute force**
 Capping requests per client per window so password guessing becomes impractical.
-*Here:* three limiters — global **200 requests / 15 min** for everything, auth
+*Here:* three limiters — global **1000 requests / 15 min** for everything
+(`RATE_LIMIT_MAX` overrides it), auth
 **10 failed attempts / 15 min** (successful logins are *not* counted, so a shared
 NAT/campus IP is not locked out by someone else's typos), refresh **60 / 15 min**.
 
@@ -543,7 +544,7 @@ Trace an authenticated admin write — "save a product edit".
  2. Express (server/src/main.js), in registration order:
     helmet()            → security headers
     compression()       → gzip the response
-    rateLimit(global)   → 200 / 15 min per IP   (after `trust proxy`, so IP is real)
+    rateLimit(global)   → 1000 / 15 min per IP  (after `trust proxy`, so IP is real)
     cors()              → origin allowlist + credentials
     express.json()      → parse body, 10 MB limit
     express.urlencoded()
@@ -1053,7 +1054,7 @@ mismatched. See §11 for why the cookie must be readable.
 **`rateLimitMiddleware.js` — the two endpoint-specific limiters.**
 `authLimiter` (10 **failed** attempts / 15 min — `skipSuccessfulRequests: true`, so a
 shared IP is not locked out by someone else) and `refreshLimiter` (60 / 15 min). Both
-are disabled under test via `skip: isTestEnv`. The global 200/15 min limiter lives in
+are disabled under test via `skip: isTestEnv`. The global 1000/15 min limiter lives in
 `main.js`, not here.
 
 **`validationMiddleWare.js` — Joi schemas for people.**

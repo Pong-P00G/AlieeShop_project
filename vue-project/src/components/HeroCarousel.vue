@@ -2,7 +2,7 @@
 import LazyImage from './LazyImage.vue';
 import { ref, onMounted, onUnmounted, computed } from 'vue';
 import { RouterLink } from 'vue-router';
-import { ChevronLeft, ChevronRight, ArrowRight, Sparkles } from 'lucide-vue-next';
+import { ArrowRight, Sparkles } from 'lucide-vue-next';
 import { heroAPI } from '../api/heroApi.js';
 
 const currentSlide = ref(0);
@@ -87,11 +87,6 @@ const nextSlide = () => {
     currentSlide.value = (currentSlide.value + 1) % heroSlides.value.length;
     slideKey.value++;
 };
-const prevSlide = () => {
-    if (heroSlides.value.length === 0) return;
-    currentSlide.value = currentSlide.value === 0 ? heroSlides.value.length - 1 : currentSlide.value - 1;
-    slideKey.value++;
-};
 const goToSlide = (index) => {
     currentSlide.value = index;
     slideKey.value++;
@@ -143,7 +138,7 @@ onUnmounted(() => stopAutoPlay());
     <section
         v-if="settings.sectionEnabled && heroSlides.length > 0"
         ref="heroRef"
-        class="relative h-105 md:h-130 lg:h-150 overflow-hidden rounded-3xl bg-ink group"
+        class="relative w-full h-105 md:h-130 lg:h-150 overflow-hidden bg-ink group"
         @mouseenter="stopAutoPlay"
         @mouseleave="startAutoPlay"
         @mousemove="handleMouseMove"
@@ -169,7 +164,7 @@ onUnmounted(() => stopAutoPlay());
             </div>
 
             <!-- Content -->
-            <div class="relative h-full max-w-7xl mx-auto px-6 sm:px-10 lg:px-16 flex items-center">
+            <div class="relative h-full px-4 sm:px-6 lg:px-8 flex items-center">
                 <!-- Key wrapper to re-trigger stagger animations on slide change -->
                 <div :key="`content-${slideKey}-${index}`" class="max-w-2xl space-y-6">
                     <div
@@ -225,22 +220,6 @@ onUnmounted(() => stopAutoPlay());
                 </div>
             </div>
         </div>
-
-        <!-- Navigation Arrows -->
-        <button
-            @click="prevSlide"
-            class="absolute left-4 md:left-6 top-1/2 -translate-y-1/2 w-11 h-11 bg-paper/10 hover:bg-paper text-paper hover:text-ink border border-paper/20 rounded-full flex items-center justify-center transition-all duration-300 z-20 backdrop-blur-md opacity-0 group-hover:opacity-100"
-            aria-label="Previous slide"
-        >
-            <ChevronLeft class="w-5 h-5" />
-        </button>
-        <button
-            @click="nextSlide"
-            class="absolute right-4 md:right-6 top-1/2 -translate-y-1/2 w-11 h-11 bg-paper/10 hover:bg-paper text-paper hover:text-ink border border-paper/20 rounded-full flex items-center justify-center transition-all duration-300 z-20 backdrop-blur-md opacity-0 group-hover:opacity-100"
-            aria-label="Next slide"
-        >
-            <ChevronRight class="w-5 h-5" />
-        </button>
 
         <!-- Dots -->
         <div class="absolute bottom-6 left-1/2 -translate-x-1/2 flex items-center gap-2 z-20">

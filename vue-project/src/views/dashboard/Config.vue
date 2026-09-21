@@ -4,6 +4,7 @@ import { paymentAPI } from '../../api/paymentApi.js';
 import { settingsAPI } from '../../api/settingsApi.js';
 import { useToast } from '../../composables/useToast.js';
 import HeroSettings from './HeroSettings.vue';
+import ProductCarouselSettings from './ProductCarouselSettings.vue';
 import {
     Settings as SettingsIcon,
     DollarSign,
@@ -18,9 +19,30 @@ import {
     Globe,
     Truck,
     MapPin,
+    LayoutTemplate,
+    LayoutGrid,
 } from 'lucide-vue-next';
 
 const toast = useToast();
+
+// ── Tabs ───────────────────────────────────────────────────────────────────────
+// One panel per concern. A panel mounts the first time it is opened and is then
+// kept alive with v-show, so switching tabs never refetches and never discards
+// an edit that has not been saved yet.
+const tabs = [
+    { id: 'general', label: 'General', hint: 'Currency, tax, shipping', icon: SettingsIcon },
+    { id: 'hero', label: 'Hero Carousel', hint: 'Storefront hero slides', icon: LayoutTemplate },
+    { id: 'product-carousel', label: 'Product Carousel', hint: 'Home page carousel', icon: LayoutGrid },
+    { id: 'payments', label: 'Payments', hint: 'Cash on delivery', icon: CreditCard },
+];
+
+const activeTab = ref('general');
+const visitedTabs = ref(['general']);
+
+const selectTab = (id) => {
+    activeTab.value = id;
+    if (!visitedTabs.value.includes(id)) visitedTabs.value.push(id);
+};
 
 // ── State ──────────────────────────────────────────────────────────────────────
 const loading = ref(true);
@@ -194,14 +216,14 @@ onMounted(loadConfig);
 
 <template>
     <div class="min-h-screen bg-neutral-50">
-        <div class="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
             <div class="mb-8">
                 <span class="inline-flex items-center gap-2 text-xs font-bold uppercase tracking-[0.2em] text-accent mb-2">
                     <SettingsIcon class="w-3.5 h-3.5" />
                     Configuration
                 </span>
                 <h1 class="text-2xl sm:text-3xl font-bold text-ink">Store Settings</h1>
-                <p class="text-neutral-500 mt-1 text-sm">Manage your store configuration, tax, shipping, and payment options</p>
+                <p class="text-neutral-500 mt-1 text-sm">Store defaults, the storefront carousels, and payment options each live in their own tab</p>
             </div>
 
             <!-- Loading -->
@@ -269,11 +291,40 @@ onMounted(loadConfig);
                 </div>
             </div>
 
-            <!-- Content -->
+            <!-- Content — horizontal tabs, one panel per concern. A panel mounts on
+                 first visit (visitedTabs) and is then toggled with v-show, so
+                 switching tabs never refetches and never discards an unsaved edit. -->
             <div v-else class="space-y-6">
 
+                <!-- Tabs -->
+                <div class="border-b border-neutral-200 overflow-x-auto">
+                    <nav class="flex items-center gap-1 min-w-max" aria-label="Configuration sections">
+                        <button
+                            v-for="t in tabs"
+                            :key="t.id"
+                            type="button"
+                            @click="selectTab(t.id)"
+                            :title="t.hint"
+                            :aria-current="activeTab === t.id ? 'page' : undefined"
+                            :class="[
+                                'inline-flex items-center gap-2 px-4 py-3 text-sm font-bold whitespace-nowrap -mb-px border-b-2 transition-colors',
+                                activeTab === t.id
+                                    ? 'border-ink text-ink'
+                                    : 'border-transparent text-neutral-500 hover:text-ink'
+                            ]"
+                        >
+                            <component :is="t.icon" class="w-4 h-4" />
+                            {{ t.label }}
+                        </button>
+                    </nav>
+                </div>
+
+                <!-- ════════════════════════════════════════════════════════════════
+                     PANEL: General
+                     ════════════════════════════════════════════════════════════════ -->
                 <!-- First run: nothing stored yet, defaults are editable -->
-                <div v-if="warning" class="card-flat p-5 bg-amber-50 border-amber-200">
+                <div v-if="warning && visitedTabs.includes('general')" v-show="activeTab === 'general'"
+                    class="card-flat p-5 bg-amber-50 border-amber-200">
                     <div class="flex items-start gap-3">
                         <Info class="w-5 h-5 text-amber-600 shrink-0 mt-0.5" />
                         <div>
@@ -283,10 +334,7 @@ onMounted(loadConfig);
                     </div>
                 </div>
 
-                <!-- ════════════════════════════════════════════════════════════════
-                     SECTION: General Store Settings
-                     ════════════════════════════════════════════════════════════════ -->
-                <div class="card-flat p-6 sm:p-8">
+                <div v-if="visitedTabs.includes('general')" v-show="activeTab === 'general'" class="card-flat p-6 sm:p-8">
                     <div class="flex items-start gap-4 sm:gap-6 flex-col sm:flex-row">
                         <div class="w-14 h-14 rounded-2xl bg-sky-50 border border-sky-200 flex items-center justify-center shrink-0">
                             <SettingsIcon class="w-7 h-7 text-sky-600" />
@@ -390,17 +438,56 @@ onMounted(loadConfig);
                     </div>
                 </div>
 
+                <!-- Note: what the general settings affect -->
+                <div v-if="visitedTabs.includes('general')" v-show="activeTab === 'general'"
+                    class="card-flat p-5 bg-amber-50 border-amber-200">
+                    <div class="flex items-start gap-3">
+                        <Info class="w-5 h-5 text-amber-600 shrink-0 mt-0.5" />
+                        <div>
+                            <p class="text-sm font-semibold text-amber-800">How these settings work</p>
+                            <p class="text-xs text-amber-700 mt-1 leading-relaxed">
+                                Changes take effect immediately for all new orders. The tax rate is applied to the
+                                subtotal plus shipping cost during checkout, and the free shipping threshold decides
+                                when customers qualify for free delivery.
+                            </p>
+                        </div>
+                    </div>
+                </div>
+
                 <!-- ════════════════════════════════════════════════════════════════
-                     SECTION: Storefront Hero
+                     PANEL: Hero Carousel
                      Manages the hero carousel slides + section behaviour.
                      Self-contained: loads and saves through /api/hero.
                      ════════════════════════════════════════════════════════════════ -->
-                <HeroSettings />
+                <HeroSettings v-if="visitedTabs.includes('hero')" v-show="activeTab === 'hero'" />
 
                 <!-- ════════════════════════════════════════════════════════════════
-                     SECTION: COD Fee (existing)
+                     PANEL: Product Carousel
+                     Manages the home page "Curated Collections" carousel —
+                     visibility, heading, autoplay, View-all button, and the tabs.
+                     Self-contained: loads and saves through /api/product-carousel.
                      ════════════════════════════════════════════════════════════════ -->
-                <div v-if="codMethod" class="card-flat p-6 sm:p-8">
+                <ProductCarouselSettings v-if="visitedTabs.includes('product-carousel')"
+                    v-show="activeTab === 'product-carousel'" />
+
+                <!-- ════════════════════════════════════════════════════════════════
+                     PANEL: Payments
+                     ════════════════════════════════════════════════════════════════ -->
+                <!-- No COD method configured — say so instead of showing a blank tab -->
+                <div v-if="!codMethod && visitedTabs.includes('payments')" v-show="activeTab === 'payments'"
+                    class="card-flat p-10 text-center">
+                    <div class="w-14 h-14 rounded-2xl bg-neutral-100 flex items-center justify-center mx-auto mb-4">
+                        <CreditCard class="w-6 h-6 text-neutral-400" />
+                    </div>
+                    <h2 class="text-lg font-bold text-ink">No payment method to configure</h2>
+                    <p class="text-sm text-neutral-500 mt-1 max-w-md mx-auto">
+                        Cash on Delivery is not set up for this store yet. Once the payment method exists, its fee
+                        can be managed here.
+                    </p>
+                </div>
+
+                <div v-if="codMethod && visitedTabs.includes('payments')" v-show="activeTab === 'payments'"
+                    class="card-flat p-6 sm:p-8">
                     <div class="flex items-start gap-4 sm:gap-6 flex-col sm:flex-row">
                         <div class="w-14 h-14 rounded-2xl bg-emerald-50 border border-emerald-200 flex items-center justify-center shrink-0">
                             <DollarSign class="w-7 h-7 text-emerald-600" />
@@ -474,17 +561,16 @@ onMounted(loadConfig);
                     </div>
                 </div>
 
-                <!-- Info Banner -->
-                <div class="card-flat p-5 bg-amber-50 border-amber-200">
+                <!-- Note: how the COD fee is applied (only meaningful when the method exists) -->
+                <div v-if="codMethod && visitedTabs.includes('payments')" v-show="activeTab === 'payments'"
+                    class="card-flat p-5 bg-amber-50 border-amber-200">
                     <div class="flex items-start gap-3">
                         <Info class="w-5 h-5 text-amber-600 shrink-0 mt-0.5" />
                         <div>
-                            <p class="text-sm font-semibold text-amber-800">How these settings work</p>
+                            <p class="text-sm font-semibold text-amber-800">How this fee works</p>
                             <p class="text-xs text-amber-700 mt-1 leading-relaxed">
-                                Changes take effect immediately for all new orders. The tax rate is applied to the
-                                subtotal plus shipping cost during checkout. The free shipping threshold determines
-                                when customers qualify for free delivery. The COD fee is added on top of the order
-                                total when customers select Cash on Delivery.
+                                The COD fee is added on top of the order total when a customer selects Cash on
+                                Delivery, and it takes effect immediately for new orders.
                             </p>
                         </div>
                     </div>
