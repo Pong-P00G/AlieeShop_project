@@ -172,7 +172,7 @@ async function seed(database) {
         if (existing > 0 && forceSeed) {
             log.info(
                 `--force-seed: adding sample data to a non-empty ${CORE_TABLE} table. ` +
-                'Some rows (variants, stock) have no conflict handling and will be duplicated.'
+                'The seed is idempotent, so only products that are not already present are added.'
             );
         }
 

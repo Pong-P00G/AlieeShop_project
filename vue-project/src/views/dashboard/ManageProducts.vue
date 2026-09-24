@@ -958,12 +958,12 @@ onMounted(() => {
                     <h1 class="text-2xl sm:text-3xl font-bold text-ink">Product Management</h1>
                     <p class="text-neutral-500 mt-1 text-sm">Manage your product catalog</p>
                 </div>
-                <div class="flex items-center gap-3">
-                    <button @click="openDiscountModal" class="btn-outline text-sm gap-2">
+                <div class="flex items-center gap-3 w-full sm:w-auto">
+                    <button @click="openDiscountModal" class="btn-outline text-sm gap-2 flex-1 sm:flex-none justify-center">
                         <Tag class="w-4 h-4" />
                         Discounts
                     </button>
-                    <button @click="openAddProduct" class="btn-accent text-sm gap-2 shadow-sm">
+                    <button @click="openAddProduct" class="btn-accent text-sm gap-2 shadow-sm flex-1 sm:flex-none justify-center">
                         <Plus class="w-4 h-4" />
                         Add Product
                     </button>
@@ -1302,8 +1302,150 @@ onMounted(() => {
                     </div>
                 </div>
 
-                <!-- Table -->
-                <div class="overflow-x-auto">
+                <!-- Mobile Card List (below lg) -->
+                <div class="lg:hidden divide-y divide-neutral-200">
+                    <template v-for="product in products" :key="'m-' + product.product_id">
+                        <div
+                            class="p-4 transition-colors"
+                            :class="{ 'bg-accent/5': selectedIds.has(product.product_id) }"
+                        >
+                            <!-- Thumb + name + expand -->
+                            <div class="flex items-start gap-3">
+                                <button
+                                    @click="toggleSelect(product.product_id)"
+                                    class="p-1 mt-0.5 shrink-0"
+                                    :aria-label="'Select ' + product.product_name"
+                                >
+                                    <CheckSquare v-if="selectedIds.has(product.product_id)" class="w-4 h-4 text-accent" />
+                                    <Square v-else class="w-4 h-4 text-neutral-300 hover:text-neutral-500 transition-colors" />
+                                </button>
+
+                                <button
+                                    @click="openImagePreview(product.thumbnail)"
+                                    class="w-12 h-12 bg-neutral-100 rounded-xl overflow-hidden shrink-0 border border-neutral-200 hover:border-accent transition-colors"
+                                >
+                                    <LazyImage
+                                        v-if="product.thumbnail"
+                                        :src="product.thumbnail"
+                                        :alt="product.product_name"
+                                        wrapper-class="w-full h-full"
+                                        img-class="w-full h-full object-cover"
+                                    />
+                                    <div v-else class="w-full h-full flex items-center justify-center">
+                                        <ImageIcon class="w-5 h-5 text-neutral-300" />
+                                    </div>
+                                </button>
+
+                                <div class="min-w-0 flex-1">
+                                    <p class="font-semibold text-ink text-sm leading-tight truncate">{{ product.product_name }}</p>
+                                    <p class="text-xs text-neutral-400 mt-0.5 truncate">{{ truncateText(product.description, 48) }}</p>
+                                    <span class="inline-block mt-1.5 px-2 py-0.5 bg-info/10 text-info rounded-full text-[10px] font-bold uppercase tracking-wider">
+                                        {{ product.category_name || 'N/A' }}
+                                    </span>
+                                </div>
+
+                                <button
+                                    @click="toggleExpandVariants(product.product_id)"
+                                    class="p-1.5 shrink-0 text-neutral-400 hover:text-ink transition-colors"
+                                    :aria-label="'Toggle variants for ' + product.product_name"
+                                >
+                                    <ChevronRight
+                                        class="w-4 h-4 transition-transform duration-200"
+                                        :class="{ 'rotate-90': expandedProducts.has(product.product_id) }"
+                                    />
+                                </button>
+                            </div>
+
+                            <!-- Price / Stock -->
+                            <div class="mt-3 grid grid-cols-2 gap-3">
+                                <div class="bg-neutral-50 rounded-lg px-3 py-2">
+                                    <p class="text-[10px] uppercase tracking-wider font-bold text-neutral-400">Price</p>
+                                    <p class="text-sm font-bold text-ink tabular-nums">${{ formatPrice(product.base_price) }}</p>
+                                </div>
+                                <div class="bg-neutral-50 rounded-lg px-3 py-2">
+                                    <p class="text-[10px] uppercase tracking-wider font-bold text-neutral-400">Stock</p>
+                                    <div class="flex items-center gap-1.5 mt-0.5">
+                                        <span class="text-sm font-bold text-ink tabular-nums">{{ product.total_stock || 0 }}</span>
+                                        <span :class="['px-1.5 py-0.5 rounded-full text-[9px] font-bold border', stockStatus(product.total_stock).class]">
+                                            {{ stockStatus(product.total_stock).label }}
+                                        </span>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- Tags -->
+                            <div v-if="(getTags(product) || []).length > 0" class="mt-3 flex flex-wrap items-center gap-1.5">
+                                <span
+                                    v-for="tag in (getTags(product) || [])"
+                                    :key="tag"
+                                    class="px-2 py-0.5 bg-ink/10 text-ink rounded-full text-[10px] font-bold whitespace-nowrap"
+                                >
+                                    {{ tag }}
+                                </span>
+                            </div>
+
+                            <!-- Status + actions -->
+                            <div class="mt-3 flex items-center justify-between gap-3">
+                                <select
+                                    :value="product.product_status"
+                                    @change="quickStatusChange(product, $event.target.value)"
+                                    :class="['px-2.5 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider border appearance-none cursor-pointer pr-6', statusStyles[product.product_status] || 'bg-neutral-100 text-neutral-700']"
+                                    aria-label="Change product status"
+                                >
+                                    <option value="active">Active</option>
+                                    <option value="draft">Draft</option>
+                                    <option value="inactive">Inactive</option>
+                                    <option value="archived">Archived</option>
+                                </select>
+                                <div class="flex items-center gap-1">
+                                    <button @click="viewProduct(product)" class="btn-ghost p-2 text-neutral-400 hover:text-info" title="View product">
+                                        <Eye class="w-4 h-4" />
+                                    </button>
+                                    <button @click="openEditProduct(product)" class="btn-ghost p-2 text-neutral-400 hover:text-ink" title="Edit product">
+                                        <Pencil class="w-4 h-4" />
+                                    </button>
+                                    <button @click="openDeleteModal(product)" class="btn-ghost p-2 text-neutral-400 hover:text-danger" title="Delete product">
+                                        <Trash2 class="w-4 h-4" />
+                                    </button>
+                                </div>
+                            </div>
+
+                            <!-- Expanded variants -->
+                            <div v-if="expandedProducts.has(product.product_id)" class="mt-3 bg-neutral-50 rounded-xl p-3">
+                                <div v-if="loadingVariants.has(product.product_id)" class="flex items-center gap-2 text-xs text-neutral-500 py-2">
+                                    <Loader2 class="w-4 h-4 animate-spin text-accent" />
+                                    Loading variants...
+                                </div>
+                                <p v-else-if="!productVariants[product.product_id] || productVariants[product.product_id].length === 0" class="text-xs text-neutral-400 py-2">
+                                    No variants defined for this product.
+                                </p>
+                                <div v-else class="space-y-2">
+                                    <div
+                                        v-for="variant in productVariants[product.product_id]"
+                                        :key="variant.variant_id"
+                                        class="bg-paper rounded-lg border border-neutral-200 p-2.5"
+                                    >
+                                        <div class="flex items-center justify-between gap-2">
+                                            <span class="text-xs font-mono text-ink truncate">{{ variant.sku || '—' }}</span>
+                                            <span class="text-xs font-bold text-ink tabular-nums whitespace-nowrap">
+                                                {{ variant.variant_price != null && variant.variant_price !== '' ? '$' + formatPrice(variant.variant_price) : '—' }}
+                                            </span>
+                                        </div>
+                                        <div class="mt-1.5 flex flex-wrap items-center gap-1.5">
+                                            <span v-if="variant.variant_color" class="px-1.5 py-0.5 bg-neutral-100 rounded text-[10px] font-semibold text-neutral-700">{{ variant.variant_color }}</span>
+                                            <span v-if="variant.variant_size" class="px-1.5 py-0.5 bg-neutral-100 rounded text-[10px] font-semibold text-neutral-700">{{ variant.variant_size }}</span>
+                                            <span v-if="variant.variant_storage" class="px-1.5 py-0.5 bg-neutral-100 rounded text-[10px] font-semibold text-neutral-700">{{ variant.variant_storage }}</span>
+                                            <span class="ml-auto text-[10px] text-neutral-500">Stock: <strong class="text-ink tabular-nums">{{ variant.quantity || 0 }}</strong></span>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </template>
+                </div>
+
+                <!-- Table (lg and up) -->
+                <div class="hidden lg:block overflow-x-auto">
                     <table class="w-full min-w-225">
                         <thead class="bg-neutral-50 border-b border-neutral-200">
                             <tr>
