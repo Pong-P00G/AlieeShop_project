@@ -10,7 +10,8 @@
 -- Unlike the hero carousel there is no item table: the carousel's
 -- contents come from live product queries, so only the section
 -- settings and the tab list (order, labels, visibility, product
--- count) are configurable.
+-- count) are configurable. Besides the four built-in tabs, admins can
+-- add their own tabs whose contents are hand-picked product ids.
 -- ============================================================
 
 INSERT INTO store_settings (setting_key, setting_value) VALUES

@@ -75,6 +75,9 @@ const adminConfig = () => ({
             autoplayInterval: 4000,
         },
         tabs: defaultTabs(),
+        tabKeys: ['featured', 'new-arrivals', 'best-sellers', 'coming-soon'],
+        maxTabs: 12,
+        maxCustomTabs: 8,
         maxProductsPerTab: 24,
         minProductsPerTab: 1,
         maxPickedProducts: 24,
@@ -111,6 +114,64 @@ describe('ProductCarouselSettings — tab list', () => {
 });
 
 // ── Picker ──────────────────────────────────────────────────────────────────
+
+describe('ProductCarouselSettings — custom tabs', () => {
+    it('creates a new tab with a slug key and its picked products', async () => {
+        render(ProductCarouselSettings);
+        await screen.findByText('Carousel Tabs');
+
+        await fireEvent.click(screen.getByRole('button', { name: 'Add tab' }));
+
+        await fireEvent.update(screen.getByLabelText('Tab label'), 'Weekly Deals');
+        await fireEvent.update(screen.getByLabelText('Tab section heading'), 'Weekly Deals');
+
+        await fireEvent.update(screen.getByLabelText('Search products to add'), 'wallet');
+        await screen.findByText('Leather Wallet', {}, { timeout: 2000 });
+        await fireEvent.click(screen.getByRole('button', { name: 'Add' }));
+
+        await fireEvent.click(screen.getByRole('button', { name: 'Create Tab' }));
+
+        await waitFor(() => {
+            const created = savedTab('weekly-deals');
+            expect(created).toBeTruthy();
+            expect(created.label).toBe('Weekly Deals');
+            expect(created.productIds).toEqual([3]);
+        });
+    });
+
+    it('deletes a custom tab after confirmation but offers no delete for built-ins', async () => {
+        const tabs = [
+            ...defaultTabs(),
+            {
+                key: 'weekly-deals',
+                label: 'Weekly Deals',
+                title: 'Weekly Deals',
+                productsPerTab: 8,
+                isActive: true,
+                productIds: [3],
+                products: [product(3, 'Leather Wallet')],
+                isCustom: true,
+            },
+        ];
+        productCarouselAPI.getAdminConfig.mockResolvedValue({
+            success: true,
+            data: { ...adminConfig().data, tabs },
+        });
+
+        render(ProductCarouselSettings);
+        await screen.findByText('Carousel Tabs');
+
+        // Built-in data sources are never removable.
+        expect(screen.queryByRole('button', { name: 'Delete Hand-picked' })).toBeNull();
+
+        await fireEvent.click(screen.getByRole('button', { name: 'Delete Weekly Deals' }));
+        await fireEvent.click(screen.getByRole('button', { name: 'Delete' }));
+
+        await waitFor(() => {
+            expect(savedTabs().some(tab => tab.key === 'weekly-deals')).toBe(false);
+        });
+    });
+});
 
 describe('ProductCarouselSettings — product picker', () => {
     it('lists the products already picked for a tab', async () => {

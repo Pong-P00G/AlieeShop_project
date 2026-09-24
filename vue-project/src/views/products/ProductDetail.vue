@@ -213,13 +213,13 @@ const buyNow = () => {
 
 const addToWishlist = () => {
     shop.toggleWishlist({
-        id: product.value.product_id,
+        id: product.value.productId,
         name: product.value.product_name,
         price: currentPrice.value,
         image: currentImage.value,
         category: product.value.category_name,
     });
-    toast.success(shop.inWishlist(product.value.product_id) ? 'Added to wishlist!' : 'Removed from wishlist!');
+    toast.success(shop.inWishlist(product.value.productId) ? 'Added to wishlist!' : 'Removed from wishlist!');
 };
 
 const showShareMenu = ref(false);
@@ -258,20 +258,26 @@ const shareOnPlatform = (link) => {
 };
 
 const editProduct = () => {
-    router.push(`/admin/products/${product.value.product_id}/edit`);
+    if (!product.value) return;
+    // Editing lives on the AddProduct form, which reads `?edit=<id>` (see ManageProducts).
+    router.push({ name: 'addproduct', query: { edit: product.value.product_id } });
 };
 
 const deleteProduct = async () => {
-    if (confirm(`Are you sure you want to delete ${product.value.product_name}?`)) {
-        const result = await productStore.deleteProduct(product.value.product_id);
-        if (result.success) {
-            router.push('/products');
-        }
+    if (!product.value) return;
+    if (!confirm(`Are you sure you want to delete ${product.value.product_name}?`)) return;
+
+    const { success, error: deleteError } = await productStore.deleteProduct(product.value.product_id);
+    if (success) {
+        toast.success('Product deleted successfully!');
+        router.push({ name: 'Product' });
+    } else {
+        toast.error(deleteError || 'Failed to delete product');
     }
 };
 
 const viewRelatedProduct = (productId) => {
-    router.push(`/product/${productId}`);
+    router.push(`/products/${productId}`);
 };
 
 const handleImageError = (event) => {
@@ -662,7 +668,7 @@ onMounted(async () => {
                             :title="hasVariants && !selectedVariant ? 'Select an option first' : null"
                             class="flex-1 py-4 text-sm font-bold rounded-full transition-all duration-300"
                             :class="addingItem
-                                ? 'bg-success text-white scale-[1.02] shadow-[0_8px_24px_-6px_rgb(34_197_94_/_0.45)]'
+                                ? 'bg-success text-white scale-[1.02] shadow-[0_8px_24px_-6px_rgb(34_197_94_/0.45)]'
                                 : hasVariants && !selectedVariant
                                     ? 'btn-primary opacity-60 ring-2 ring-accent/40'
                                     : 'btn-primary disabled:opacity-40 disabled:hover:translate-y-0'"
@@ -737,7 +743,7 @@ onMounted(async () => {
                         v-for="relatedProduct in relatedProducts"
                         :key="relatedProduct.product_id"
                         @click="viewRelatedProduct(relatedProduct.product_id)"
-                        class="card-base overflow-hidden cursor-pointer group transition-all duration-300 hover:-translate-y-1 hover:shadow-[0_12px_32px_-8px_rgb(0_0_0_/_0.12)]"
+                        class="card-base overflow-hidden cursor-pointer group transition-all duration-300 hover:-translate-y-1 hover:shadow-[0_12px_32px_-8px_rgb(0_0_0_/0.12)]"
                     >
                         <div class="aspect-square bg-neutral-100 overflow-hidden">
                             <LazyImage

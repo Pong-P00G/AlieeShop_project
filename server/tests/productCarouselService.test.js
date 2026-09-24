@@ -91,6 +91,21 @@ describe('productCarouselService — getProductCarousel', () => {
         expect(settings).not.toHaveProperty('tabs');
     });
 
+    it('carries an admin-created custom tab through to the storefront', async () => {
+        SettingsModel.getAllSettings.mockResolvedValue(rows({
+            product_carousel_tabs: JSON.stringify([
+                { key: 'weekly-deals', label: 'Deals', title: 'Weekly deals', productIds: [5] },
+            ]),
+        }));
+        ProductModel.getProductsByIds.mockResolvedValue([dbProduct(5)]);
+
+        const { tabs } = await productCarouselService.getProductCarousel();
+        const custom = tabs.find(tab => tab.key === 'weekly-deals');
+
+        expect(custom).toMatchObject({ isCustom: true, label: 'Deals' });
+        expect(custom.products.map(product => product.product_id)).toEqual([5]);
+    });
+
     it('ignores unrelated store settings', async () => {
         SettingsModel.getAllSettings.mockResolvedValue([
             { key: 'tax_rate', value: '8' },
@@ -184,9 +199,35 @@ describe('productCarouselService — normalizeTabs', () => {
             .toEqual(['coming-soon', 'featured', 'new-arrivals', 'best-sellers']);
     });
 
-    it('drops unknown keys', () => {
+    it('keeps an admin-created custom key and flags it as custom', () => {
+        const tabs = productCarouselService.normalizeTabs([
+            { key: 'weekly-deals', label: 'Deals', title: 'Weekly deals' },
+        ]);
+
+        expect(tabs.map(tab => tab.key))
+            .toEqual(['weekly-deals', 'featured', 'new-arrivals', 'best-sellers', 'coming-soon']);
+        expect(tabs[0]).toMatchObject({ isCustom: true, label: 'Deals', title: 'Weekly deals' });
+        expect(tabs[1].isCustom).toBe(false);
+    });
+
+    it('drops keys that are not valid slugs', () => {
+        const tabs = productCarouselService.normalizeTabs([
+            { key: 'Weekly Deals' },
+            { key: 'weekly_deals' },
+            { key: '' },
+            { key: 'a'.repeat(productCarouselService.MAX_TAB_KEY + 1) },
+        ]);
+
+        expect(tabs.map(tab => tab.key))
+            .toEqual(['featured', 'new-arrivals', 'best-sellers', 'coming-soon']);
+    });
+
+    it('humanizes a custom key when no label is supplied', () => {
         const tabs = productCarouselService.normalizeTabs([{ key: 'weekly-deals' }]);
-        expect(tabs.map(tab => tab.key)).toEqual(['featured', 'new-arrivals', 'best-sellers', 'coming-soon']);
+
+        expect(tabs[0].label).toBe('Weekly deals');
+        expect(tabs[0].title).toBe('Weekly deals');
+        expect(tabs[0].productsPerTab).toBe(8);
     });
 
     it('collapses duplicate keys', () => {
@@ -262,13 +303,36 @@ describe('productCarouselService — updateCarouselSettings', () => {
         ).resolves.toBeTruthy();
     });
 
-    it('rejects a tab list containing an unknown source', async () => {
-        await expect(
-            productCarouselService.updateCarouselSettings({
-                product_carousel_tabs: [{ key: 'featured' }, { key: 'weekly-deals' }],
-            }, ADMIN)
-        ).rejects.toMatchObject({ status: 400, message: /Unknown carousel tab/ });
+    it('accepts an admin-created custom tab and persists it without isCustom', async () => {
+        await productCarouselService.updateCarouselSettings({
+            product_carousel_tabs: [
+                { key: 'weekly-deals', label: 'Deals', title: 'Weekly deals', productIds: [4] },
+                { key: 'featured' },
+            ],
+        }, ADMIN);
+
+        const stored = JSON.parse(SettingsModel.bulkUpsertSettings.mock.calls[0][0].product_carousel_tabs);
+        expect(stored.map(tab => tab.key))
+            .toEqual(['weekly-deals', 'featured', 'new-arrivals', 'best-sellers', 'coming-soon']);
+        expect(stored[0].productIds).toEqual([4]);
+        expect(stored[0]).not.toHaveProperty('isCustom');
+    });
+
+    it('rejects a tab key that is not a slug', async () => {
+        await expect(productCarouselService.updateCarouselSettings({
+            product_carousel_tabs: [{ key: 'Weekly Deals' }],
+        }, ADMIN)).rejects.toMatchObject({ status: 400, message: /Invalid carousel tab key/ });
         expect(SettingsModel.bulkUpsertSettings).not.toHaveBeenCalled();
+    });
+
+    it('rejects more tabs than the ceiling allows', async () => {
+        const tabs = Array.from({ length: productCarouselService.MAX_TABS }, (_, i) => ({ key: `tab-${i}` }));
+
+        // MAX_TABS custom tabs plus the built-ins appended by normalizeTabs
+        // would push the list past the cap.
+        await expect(productCarouselService.updateCarouselSettings({
+            product_carousel_tabs: tabs,
+        }, ADMIN)).rejects.toMatchObject({ status: 400, message: /maximum of/ });
     });
 
     it('rejects duplicate tabs', async () => {
@@ -389,7 +453,8 @@ describe('productCarouselService — getAdminProductCarousel', () => {
 
         expect(result.tabs).toHaveLength(4);
         expect(result.tabs[0].isActive).toBe(false);
-        expect(result.maxTabs).toBe(4);
+        expect(result.maxTabs).toBe(productCarouselService.MAX_TABS);
+        expect(result.maxCustomTabs).toBe(productCarouselService.MAX_CUSTOM_TABS);
         expect(result.maxProductsPerTab).toBe(productCarouselService.MAX_PRODUCTS_PER_TAB);
         expect(result.maxPickedProducts).toBe(productCarouselService.MAX_PICKED_PRODUCTS);
         expect(result.tabKeys).toEqual(productCarouselService.TAB_KEYS);

@@ -22,6 +22,7 @@ import * as supertest from 'supertest';
 const request = supertest.default || supertest;
 import app from '../src/main.js';
 import { db } from '../src/database/dbpool.js';
+import { MAX_TABS, MAX_CUSTOM_TABS } from '../src/services/productCarouselService.js';
 
 // ── Constants ───────────────────────────────────────────────────────────────
 
@@ -233,7 +234,8 @@ describe('GET /api/product-carousel/admin — admin only', () => {
         expect(res.body.success).toBe(true);
         expect(res.body.data.tabs).toHaveLength(DEFAULT_TAB_KEYS.length);
         expect(res.body.data.tabKeys).toEqual(DEFAULT_TAB_KEYS);
-        expect(res.body.data.maxTabs).toBe(DEFAULT_TAB_KEYS.length);
+        expect(res.body.data.maxTabs).toBe(MAX_TABS);
+        expect(res.body.data.maxCustomTabs).toBe(MAX_CUSTOM_TABS);
         expect(res.body.data.maxProductsPerTab).toBe(24);
         expect(res.body.data.minProductsPerTab).toBe(1);
         expect(res.body.data.settings).not.toHaveProperty('tabs');
@@ -291,10 +293,20 @@ describe('PUT /api/product-carousel/settings — validation', () => {
         expect(res.body.message).toMatch(/must start with/);
     });
 
-    it('rejects a tab source the storefront cannot render', async () => {
-        const res = await put({ product_carousel_tabs: [{ key: 'weekly-deals' }] });
+    it('rejects a tab key that is not a slug', async () => {
+        const res = await put({ product_carousel_tabs: [{ key: 'Weekly Deals' }] });
 
         expect(res.status).toBe(400);
+    });
+
+    it('accepts an admin-created custom tab', async () => {
+        const res = await put({
+            product_carousel_tabs: [
+                { key: 'weekly-deals', label: 'Deals', title: 'Weekly deals', productsPerTab: 6, isActive: true },
+            ],
+        });
+
+        expect(res.status).toBe(200);
     });
 
     it('rejects duplicate tabs', async () => {
@@ -455,6 +467,34 @@ describe('PUT /api/product-carousel/settings — persistence', () => {
         expect(featured.products.map(product => product.product_id)).toEqual([second, first]);
         expect(featured.products[0]).toHaveProperty('product_name');
         expect(featured.products[0]).toHaveProperty('thumbnail');
+    });
+
+    it('round-trips an admin-created custom tab to the storefront', async () => {
+        const picks = handPicked.productIds ? [handPicked.productIds[0]] : [];
+
+        const res = await put({ product_carousel_tabs: [
+            { key: 'weekly-deals', label: 'Deals', title: 'Weekly deals', productsPerTab: 6, isActive: true, productIds: picks },
+        ] });
+
+        expect(res.status).toBe(200);
+
+        const publicRes = await request(app).get('/api/product-carousel');
+        const custom = publicRes.body.data.tabs.find(tab => tab.key === 'weekly-deals');
+
+        expect(custom).toMatchObject({ label: 'Deals', productsPerTab: 6, isCustom: true });
+        expect(custom.products.map(product => product.product_id)).toEqual(picks);
+        // The built-ins are re-appended after the custom tab, never dropped.
+        expect(publicRes.body.data.tabs.map(tab => tab.key))
+            .toEqual(['weekly-deals', ...DEFAULT_TAB_KEYS]);
+    });
+
+    it('removes a custom tab that is omitted from the payload, while keeping the built-ins', async () => {
+        const res = await put({ product_carousel_tabs: [{ key: 'featured' }] });
+
+        expect(res.status).toBe(200);
+
+        const publicRes = await request(app).get('/api/product-carousel');
+        expect(publicRes.body.data.tabs.map(tab => tab.key)).toEqual(DEFAULT_TAB_KEYS);
     });
 
     it('leaves a tab with no picks empty, so the storefront runs its automatic query', async () => {

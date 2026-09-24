@@ -250,36 +250,36 @@ onMounted(fetchOrders);
             <div v-else class="card-flat overflow-hidden">
                 <div class="overflow-x-auto">
                     <table class="w-full min-w-[800px]">
-                        <thead class="bg-neutral-50 border-b border-neutral-200">
+                        <thead class="bg-neutral-50/60 border-b border-neutral-200">
                             <tr>
-                                <th class="px-6 py-4 text-left text-[10px] font-bold text-neutral-500 uppercase tracking-[0.15em]">Order</th>
-                                <th class="px-6 py-4 text-left text-[10px] font-bold text-neutral-500 uppercase tracking-[0.15em]">Customer</th>
-                                <th class="px-6 py-4 text-left text-[10px] font-bold text-neutral-500 uppercase tracking-[0.15em]">Amount</th>
-                                <th class="px-6 py-4 text-left text-[10px] font-bold text-neutral-500 uppercase tracking-[0.15em]">Items</th>
-                                <th class="px-6 py-4 text-left text-[10px] font-bold text-neutral-500 uppercase tracking-[0.15em]">Status</th>
-                                <th class="px-6 py-4 text-left text-[10px] font-bold text-neutral-500 uppercase tracking-[0.15em]">Date</th>
-                                <th class="px-6 py-4 text-right text-[10px] font-bold text-neutral-500 uppercase tracking-[0.15em]">Actions</th>
+                                <th class="px-6 py-3 text-left text-[10px] font-semibold text-neutral-400 uppercase tracking-[0.12em]">Order</th>
+                                <th class="px-6 py-3 text-left text-[10px] font-semibold text-neutral-400 uppercase tracking-[0.12em]">Customer</th>
+                                <th class="px-6 py-3 text-left text-[10px] font-semibold text-neutral-400 uppercase tracking-[0.12em]">Amount</th>
+                                <th class="px-6 py-3 text-left text-[10px] font-semibold text-neutral-400 uppercase tracking-[0.12em]">Items</th>
+                                <th class="px-6 py-3 text-left text-[10px] font-semibold text-neutral-400 uppercase tracking-[0.12em]">Status</th>
+                                <th class="px-6 py-3 text-left text-[10px] font-semibold text-neutral-400 uppercase tracking-[0.12em]">Date</th>
+                                <th class="px-6 py-3 text-right text-[10px] font-semibold text-neutral-400 uppercase tracking-[0.12em]">Actions</th>
                             </tr>
                         </thead>
-                        <tbody class="divide-y divide-neutral-200">
-                            <tr v-for="order in filteredOrders" :key="order.orderId" class="hover:bg-neutral-50 transition-colors">
-                                <td class="px-6 py-4"><span class="font-bold text-ink tabular-nums">#{{ order.orderId }}</span></td>
-                                <td class="px-6 py-4">
+                        <tbody class="divide-y divide-neutral-100">
+                            <tr v-for="order in filteredOrders" :key="order.orderId" class="hover:bg-neutral-50/70 transition-colors">
+                                <td class="px-6 py-2.5"><span class="font-bold text-ink tabular-nums">#{{ order.orderId }}</span></td>
+                                <td class="px-6 py-2.5">
                                     <p class="font-semibold text-ink text-sm">{{ order.username }}</p>
-                                    <p class="text-xs text-neutral-500">{{ order.email }}</p>
+                                    <p class="text-[11px] text-neutral-400">{{ order.email }}</p>
                                 </td>
-                                <td class="px-6 py-4"><span class="font-bold text-ink tabular-nums">${{ formatPrice(order.totalAmount) }}</span></td>
-                                <td class="px-6 py-4"><span class="text-sm text-neutral-700 tabular-nums">{{ order.itemCount }}</span></td>
-                                <td class="px-6 py-4">
+                                <td class="px-6 py-2.5"><span class="font-bold text-ink tabular-nums">${{ formatPrice(order.totalAmount) }}</span></td>
+                                <td class="px-6 py-2.5"><span class="text-sm text-neutral-600 tabular-nums">{{ order.itemCount }}</span></td>
+                                <td class="px-6 py-2.5">
                                     <div class="relative inline-block">
-                                        <select :value="order.status" @change="updateStatus(order.orderId, $event.target.value)" :disabled="updatingId === order.orderId" :aria-label="'Order status for #' + order.orderId" :class="['px-3 py-1.5 rounded-full text-xs font-bold uppercase tracking-wider border appearance-none cursor-pointer pr-8 disabled:opacity-50', statusStyles[order.status] || 'bg-neutral-100 text-neutral-700']">
+                                        <select :value="order.status" @change="updateStatus(order.orderId, $event.target.value)" :disabled="updatingId === order.orderId" :aria-label="'Order status for #' + order.orderId" :class="['px-2 py-0.5 rounded-md text-[10px] font-semibold uppercase tracking-wide border appearance-none cursor-pointer pr-6 disabled:opacity-50', statusStyles[order.status] || 'bg-neutral-100 text-neutral-700']">
                                             <option v-for="s in statuses" :key="s" :value="s">{{ s }}</option>
                                         </select>
                                         <ChevronDown class="absolute right-2.5 top-1/2 -translate-y-1/2 w-3 h-3 pointer-events-none opacity-60" />
                                     </div>
                                 </td>
-                                <td class="px-6 py-4"><span class="text-sm text-neutral-600">{{ formatDate(order.createdAt) }}</span></td>
-                                <td class="px-6 py-4 text-right">
+                                <td class="px-6 py-2.5"><span class="text-[11px] text-neutral-400">{{ formatDate(order.createdAt) }}</span></td>
+                                <td class="px-6 py-2.5 text-right">
                                     <div class="flex items-center justify-end gap-2">
                                         <button v-if="isCODPending(order)"
                                             @click="markAsPaid(order)"
@@ -341,7 +341,7 @@ onMounted(fetchOrders);
                         </div>
                         <div class="flex items-center gap-3">
                             <span class="text-xs font-bold uppercase tracking-[0.15em] text-neutral-500 shrink-0">Status</span>
-                            <span :class="['px-3 py-1 rounded-full text-xs font-bold uppercase tracking-wider', statusStyles[selectedOrder.status] || 'bg-neutral-100 text-neutral-700']">{{ selectedOrder.status }}</span>
+                            <span :class="['px-2 py-0.5 rounded-md text-[10px] font-semibold uppercase tracking-wide', statusStyles[selectedOrder.status] || 'bg-neutral-100 text-neutral-700']">{{ selectedOrder.status }}</span>
                         </div>
                     </div>
                 </div>

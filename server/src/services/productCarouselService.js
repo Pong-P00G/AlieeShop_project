@@ -6,9 +6,11 @@ import * as ProductModel from '../model/products/productModel.js';
 // ═══════════════════════════════════════════════════════════════════════════════
 
 /**
- * The carousel's tabs are fixed data sources, not admin-authored items: each key
- * maps to a product query the storefront already knows how to run. Admins can
- * reorder, rename, hide and resize them — but never invent a new source.
+ * Built-in tab keys map to product queries the storefront already knows how to
+ * run (featured / new arrivals / best sellers / coming soon). Admins can
+ * reorder, rename, hide and resize them, and additionally create their own
+ * hand-picked tabs — those carry an arbitrary slug key and render only the
+ * products picked for them.
  */
 export const TAB_KEYS = ['featured', 'new-arrivals', 'best-sellers', 'coming-soon'];
 
@@ -52,11 +54,39 @@ const KEBAB_TO_CAMEL = {
     product_carousel_tabs: 'tabs',
 };
 
-export const MAX_TABS = TAB_KEYS.length;
+/**
+ * Ceiling for the whole tab list: the four built-ins plus admin-created tabs.
+ * Custom tabs are purely hand-picked collections; the built-in keys keep their
+ * automatic storefront queries.
+ */
+export const MAX_TABS = 12;
+export const MAX_CUSTOM_TABS = MAX_TABS - TAB_KEYS.length;
+export const MAX_TAB_KEY = 40;
 export const MAX_PRODUCTS_PER_TAB = 24;
 /** A tab renders at most `productsPerTab` cards, so hand-picks are capped there too. */
 export const MAX_PICKED_PRODUCTS = MAX_PRODUCTS_PER_TAB;
 export const MIN_PRODUCTS_PER_TAB = 1;
+const DEFAULT_PRODUCTS_PER_TAB = 8;
+
+/** Tab keys are lowercase slugs so they are safe as DOM keys and in URLs. */
+const TAB_KEY_PATTERN = /^[a-z0-9]+(?:-[a-z0-9]+)*$/;
+
+/** True for a key the storefront can run an automatic product query for. */
+export const isBuiltInTabKey = (key) => TAB_KEYS.includes(key);
+
+/** True when `key` is shaped like a tab key (built-in or custom). */
+export const isValidTabKey = (key) => (
+    typeof key === 'string'
+    && key.length > 0
+    && key.length <= MAX_TAB_KEY
+    && TAB_KEY_PATTERN.test(key)
+);
+
+/** 'weekly-deals' → 'Weekly deals', the fallback label/title for a custom tab. */
+const humanizeTabKey = (key) => {
+    const words = key.replace(/-/g, ' ').trim();
+    return words.charAt(0).toUpperCase() + words.slice(1);
+};
 export const AUTOPLAY_INTERVAL_MIN = 2000;
 export const AUTOPLAY_INTERVAL_MAX = 60000;
 
@@ -138,10 +168,11 @@ const parseStoredTabs = (value) => {
 /**
  * Merge incoming tabs with the built-in defaults.
  *
- * Order is whatever was submitted (this is what the admin reorders), unknown
- * keys are dropped, duplicates collapse, and every tab that is missing from the
- * payload is appended in its default position — so a partial payload can never
- * leave the storefront without one of its data sources.
+ * Order is whatever was submitted (this is what the admin reorders). Keys that
+ * are not valid slugs — or that duplicate an earlier entry — are dropped, and
+ * every built-in tab missing from the payload is appended in its default
+ * position, so a partial payload can never leave the storefront without one of
+ * its data sources. Custom keys are kept and flagged with `isCustom`.
  */
 export const normalizeTabs = (raw = []) => {
     const byKey = new Map();
@@ -149,22 +180,26 @@ export const normalizeTabs = (raw = []) => {
 
     if (Array.isArray(raw)) {
         for (const entry of raw) {
-            const key = typeof entry === 'string' ? entry : entry?.key;
-            if (!TAB_KEYS.includes(key) || byKey.has(key)) continue;
+            const rawKey = typeof entry === 'string' ? entry : entry?.key;
+            if (typeof rawKey !== 'string') continue;
+
+            const key = rawKey.trim().toLowerCase();
+            if (!isValidTabKey(key) || byKey.has(key)) continue;
 
             const defaults = DEFAULT_TABS.find(tab => tab.key === key);
             byKey.set(key, {
                 key,
-                label: normalizeText(entry?.label, MAX_TAB_LABEL) ?? defaults.label,
-                title: normalizeText(entry?.title, MAX_TAB_TITLE) ?? defaults.title,
+                label: normalizeText(entry?.label, MAX_TAB_LABEL) ?? defaults?.label ?? humanizeTabKey(key),
+                title: normalizeText(entry?.title, MAX_TAB_TITLE) ?? defaults?.title ?? humanizeTabKey(key),
                 productsPerTab: clampInt(
                     entry?.productsPerTab,
                     MIN_PRODUCTS_PER_TAB,
                     MAX_PRODUCTS_PER_TAB,
-                    defaults.productsPerTab
+                    defaults?.productsPerTab ?? DEFAULT_PRODUCTS_PER_TAB
                 ),
-                isActive: typeof entry?.isActive === 'boolean' ? entry.isActive : defaults.isActive,
+                isActive: typeof entry?.isActive === 'boolean' ? entry.isActive : (defaults?.isActive ?? true),
                 productIds: normalizeProductIds(entry?.productIds),
+                isCustom: !defaults,
             });
             order.push(key);
         }
@@ -172,7 +207,7 @@ export const normalizeTabs = (raw = []) => {
 
     for (const defaults of DEFAULT_TABS) {
         if (!byKey.has(defaults.key)) {
-            byKey.set(defaults.key, { ...defaults });
+            byKey.set(defaults.key, { ...defaults, isCustom: false });
             order.push(defaults.key);
         }
     }
@@ -284,6 +319,7 @@ export const getAdminProductCarousel = async (roleId) => {
         tabs: await withPickedProducts(tabs), // includes hidden tabs
         tabKeys: TAB_KEYS,
         maxTabs: MAX_TABS,
+        maxCustomTabs: MAX_CUSTOM_TABS,
         maxProductsPerTab: MAX_PRODUCTS_PER_TAB,
         minProductsPerTab: MIN_PRODUCTS_PER_TAB,
         maxPickedProducts: MAX_PICKED_PRODUCTS,
@@ -347,10 +383,14 @@ export const updateCarouselSettings = async (settings = {}, roleId) => {
             if (!Array.isArray(value) || value.length === 0) {
                 throw httpError(400, 'product_carousel_tabs must be a non-empty array');
             }
-            const submitted = value.map(entry => entry?.key);
-            const invalid = submitted.find(key => !TAB_KEYS.includes(key));
+            // Keys must be slug-shaped. A built-in key keeps its storefront
+            // query; any other key becomes an admin-created, hand-picked tab.
+            const submitted = value.map(entry => (
+                typeof entry?.key === 'string' ? entry.key.trim().toLowerCase() : entry?.key
+            ));
+            const invalid = submitted.find(key => !isValidTabKey(key));
             if (invalid !== undefined) {
-                throw httpError(400, `Unknown carousel tab: "${invalid}"`);
+                throw httpError(400, `Invalid carousel tab key: "${invalid}"`);
             }
             if (new Set(submitted).size !== submitted.length) {
                 throw httpError(400, 'product_carousel_tabs contains duplicate tabs');
@@ -369,7 +409,12 @@ export const updateCarouselSettings = async (settings = {}, roleId) => {
                     throw httpError(400, `A tab can hold at most ${MAX_PICKED_PRODUCTS} hand-picked products`);
                 }
             }
-            payload[key] = JSON.stringify(normalizeTabs(value));
+            const normalized = normalizeTabs(value);
+            if (normalized.length > MAX_TABS) {
+                throw httpError(400, `A maximum of ${MAX_TABS} carousel tabs is allowed`);
+            }
+            // `isCustom` is derived when reading, so it is not persisted.
+            payload[key] = JSON.stringify(normalized.map(({ isCustom, ...tab }) => tab));
             continue;
         }
 

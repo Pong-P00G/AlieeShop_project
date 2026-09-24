@@ -1,8 +1,9 @@
 import Joi from 'joi';
 import {
-    TAB_KEYS,
     AUTOPLAY_INTERVAL_MIN,
     AUTOPLAY_INTERVAL_MAX,
+    MAX_TABS,
+    MAX_TAB_KEY,
     MAX_PRODUCTS_PER_TAB,
     MIN_PRODUCTS_PER_TAB,
     MAX_PICKED_PRODUCTS,
@@ -48,7 +49,18 @@ export const validateProductCarouselSettings = runValidation(
         product_carousel_tabs: Joi.array()
             .items(
                 Joi.object({
-                    key: Joi.string().valid(...TAB_KEYS).required(),
+                    // A built-in key keeps its storefront query; any other
+                    // slug key is an admin-created, hand-picked tab.
+                    key: Joi.string()
+                        .trim()
+                        .lowercase()
+                        .max(MAX_TAB_KEY)
+                        .pattern(/^[a-z0-9]+(?:-[a-z0-9]+)*$/)
+                        .required()
+                        .messages({
+                            'string.pattern.base':
+                                '{{#label}} must be a lowercase slug of letters, numbers and hyphens (e.g. "weekly-deals")',
+                        }),
                     label: Joi.string().trim().max(40).allow('', null).optional(),
                     title: Joi.string().trim().max(80).allow('', null).optional(),
                     productsPerTab: Joi.number()
@@ -65,6 +77,7 @@ export const validateProductCarouselSettings = runValidation(
                 })
             )
             .min(1)
+            .max(MAX_TABS)
             .optional(),
     }).min(1)
 );

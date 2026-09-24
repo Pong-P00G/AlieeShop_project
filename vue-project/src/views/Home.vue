@@ -295,6 +295,11 @@ const TAB_META = {
     'coming-soon': { icon: Zap, emptyMsg: 'No upcoming products right now.' },
 };
 
+// Admin-created tabs have no automatic query — they only ever show hand-picked
+// products, so they get a generic icon and an empty-state of their own.
+const CUSTOM_TAB_META = { icon: Sparkles, emptyMsg: 'No products in this collection yet.' };
+const tabMeta = (key) => TAB_META[key] || CUSTOM_TAB_META;
+
 const carouselSettings = ref({ ...DEFAULT_CAROUSEL_SETTINGS });
 const carouselTabs = ref(DEFAULT_CAROUSEL_TABS.map(tab => ({ ...tab })));
 
@@ -312,10 +317,11 @@ const carouselSections = computed(() => {
             key: tab.key,
             label: tab.label,
             title: tab.title,
-            icon: TAB_META[tab.key]?.icon,
+            icon: tabMeta(tab.key).icon,
             // A tab with hand-picked products renders those instead of its query.
+            // A custom tab has no query at all, so it renders picks (or nothing).
             products: hasPicks(tab) ? (tab.products || []).map(mapProduct) : (byTab[tab.key] || []),
-            emptyMsg: TAB_META[tab.key]?.emptyMsg || 'No products available yet.',
+            emptyMsg: tabMeta(tab.key).emptyMsg,
         }));
 });
 

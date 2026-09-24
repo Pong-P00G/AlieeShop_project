@@ -22,15 +22,12 @@ import path from 'path';
 import { spawn } from 'child_process';
 import { fileURLToPath } from 'url';
 import pg from 'pg';
+import { CORE_TABLE, seedFileExists, applySeed } from './src/database/seedProducts.js';
 
 const { Client } = pg;
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
 const BASE_SCHEMA_FILE = path.join(__dirname, 'schema', '000_base_schema.sql');
-const SEED_FILE = path.join(__dirname, 'seed_products.sql');
-
-// Presence of this table marks a database as already initialised.
-const CORE_TABLE = 'products';
 
 const args = new Set(process.argv.slice(2));
 const skipSeed = args.has('--no-seed');
@@ -148,7 +145,7 @@ function runMigrations() {
 }
 
 async function seed(database) {
-    if (!fs.existsSync(SEED_FILE)) {
+    if (!seedFileExists()) {
         log.skip('No seed_products.sql found — nothing to seed.');
         return false;
     }
@@ -177,7 +174,7 @@ async function seed(database) {
         }
 
         // The seed file opens and commits its own transaction.
-        await client.query(fs.readFileSync(SEED_FILE, 'utf8'));
+        await applySeed(client);
         log.ok('Seeded sample categories, products, variants and stock.');
         return true;
     } finally {

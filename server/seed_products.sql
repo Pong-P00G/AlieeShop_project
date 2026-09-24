@@ -3,7 +3,8 @@
 -- PostgreSQL | Aliee Shop
 --
 -- Run with:
---   psql -U postgres -d aliee_shop -f server/seed_products.sql
+--   npm run seed            (from the server/ directory)
+--   npm run seed -- --force-seed   to seed a non-empty catalog
 -- ============================================================
 
 BEGIN;

@@ -6,6 +6,7 @@ import { variantAPI } from '../../api/products/variantApi';
 import { discountAPI } from '../../api/products/discountApi.js';
 import { useRouter } from 'vue-router';
 import { useToast } from '../../composables/useToast.js';
+import { useMediaQuery } from '../../composables/useMediaQuery.js';
 import LazyImage from '../../components/LazyImage.vue';
 import {
     Plus,
@@ -39,6 +40,10 @@ import {
 
 const toast = useToast();
 const router = useRouter();
+// Render either the mobile card list or the desktop table — never both, so
+// product names aren't duplicated in the DOM. Falls back to the table where
+// matchMedia is unavailable (e.g. jsdom in tests).
+const isDesktop = useMediaQuery('(min-width: 1024px)', true);
 
 // ── State ────────────────────────────────────────────────────────────────────
 const products = ref([]);
@@ -1303,10 +1308,11 @@ onMounted(() => {
                 </div>
 
                 <!-- Mobile Card List (below lg) -->
-                <div class="lg:hidden divide-y divide-neutral-200">
+                <div v-if="!isDesktop" class="divide-y divide-neutral-100">
+                    <!-- eslint-disable-next-line vue/no-v-for-template-key -->
                     <template v-for="product in products" :key="'m-' + product.product_id">
                         <div
-                            class="p-4 transition-colors"
+                            class="px-4 py-3.5 transition-colors"
                             :class="{ 'bg-accent/5': selectedIds.has(product.product_id) }"
                         >
                             <!-- Thumb + name + expand -->
@@ -1322,7 +1328,7 @@ onMounted(() => {
 
                                 <button
                                     @click="openImagePreview(product.thumbnail)"
-                                    class="w-12 h-12 bg-neutral-100 rounded-xl overflow-hidden shrink-0 border border-neutral-200 hover:border-accent transition-colors"
+                                    class="w-11 h-11 bg-neutral-100 rounded-lg overflow-hidden shrink-0 border border-neutral-200/80 hover:border-accent transition-colors"
                                 >
                                     <LazyImage
                                         v-if="product.thumbnail"
@@ -1338,8 +1344,8 @@ onMounted(() => {
 
                                 <div class="min-w-0 flex-1">
                                     <p class="font-semibold text-ink text-sm leading-tight truncate">{{ product.product_name }}</p>
-                                    <p class="text-xs text-neutral-400 mt-0.5 truncate">{{ truncateText(product.description, 48) }}</p>
-                                    <span class="inline-block mt-1.5 px-2 py-0.5 bg-info/10 text-info rounded-full text-[10px] font-bold uppercase tracking-wider">
+                                    <p class="text-[11px] text-neutral-400 mt-0.5 truncate">{{ truncateText(product.description, 48) }}</p>
+                                    <span class="inline-block mt-1 px-2 py-0.5 bg-neutral-100 text-neutral-500 rounded-md text-[10px] font-semibold uppercase tracking-wide">
                                         {{ product.category_name || 'N/A' }}
                                     </span>
                                 </div>
@@ -1357,19 +1363,17 @@ onMounted(() => {
                             </div>
 
                             <!-- Price / Stock -->
-                            <div class="mt-3 grid grid-cols-2 gap-3">
-                                <div class="bg-neutral-50 rounded-lg px-3 py-2">
-                                    <p class="text-[10px] uppercase tracking-wider font-bold text-neutral-400">Price</p>
-                                    <p class="text-sm font-bold text-ink tabular-nums">${{ formatPrice(product.base_price) }}</p>
+                            <div class="mt-3 flex items-center gap-5">
+                                <div class="flex items-baseline gap-1.5">
+                                    <span class="text-[10px] uppercase tracking-wide font-semibold text-neutral-400">Price</span>
+                                    <span class="text-sm font-bold text-ink tabular-nums">${{ formatPrice(product.base_price) }}</span>
                                 </div>
-                                <div class="bg-neutral-50 rounded-lg px-3 py-2">
-                                    <p class="text-[10px] uppercase tracking-wider font-bold text-neutral-400">Stock</p>
-                                    <div class="flex items-center gap-1.5 mt-0.5">
-                                        <span class="text-sm font-bold text-ink tabular-nums">{{ product.total_stock || 0 }}</span>
-                                        <span :class="['px-1.5 py-0.5 rounded-full text-[9px] font-bold border', stockStatus(product.total_stock).class]">
-                                            {{ stockStatus(product.total_stock).label }}
-                                        </span>
-                                    </div>
+                                <div class="flex items-center gap-1.5">
+                                    <span class="text-[10px] uppercase tracking-wide font-semibold text-neutral-400">Stock</span>
+                                    <span class="text-sm font-bold text-ink tabular-nums">{{ product.total_stock || 0 }}</span>
+                                    <span :class="['px-1.5 py-0.5 rounded-md text-[9px] font-semibold border', stockStatus(product.total_stock).class]">
+                                        {{ stockStatus(product.total_stock).label }}
+                                    </span>
                                 </div>
                             </div>
 
@@ -1378,7 +1382,7 @@ onMounted(() => {
                                 <span
                                     v-for="tag in (getTags(product) || [])"
                                     :key="tag"
-                                    class="px-2 py-0.5 bg-ink/10 text-ink rounded-full text-[10px] font-bold whitespace-nowrap"
+                                    class="px-2 py-0.5 bg-neutral-100 text-neutral-600 rounded-md text-[10px] font-semibold whitespace-nowrap"
                                 >
                                     {{ tag }}
                                 </span>
@@ -1389,7 +1393,7 @@ onMounted(() => {
                                 <select
                                     :value="product.product_status"
                                     @change="quickStatusChange(product, $event.target.value)"
-                                    :class="['px-2.5 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider border appearance-none cursor-pointer pr-6', statusStyles[product.product_status] || 'bg-neutral-100 text-neutral-700']"
+                                    :class="['px-2 py-0.5 rounded-md text-[10px] font-semibold uppercase tracking-wide border appearance-none cursor-pointer pr-5', statusStyles[product.product_status] || 'bg-neutral-100 text-neutral-600']"
                                     aria-label="Change product status"
                                 >
                                     <option value="active">Active</option>
@@ -1398,20 +1402,20 @@ onMounted(() => {
                                     <option value="archived">Archived</option>
                                 </select>
                                 <div class="flex items-center gap-1">
-                                    <button @click="viewProduct(product)" class="btn-ghost p-2 text-neutral-400 hover:text-info" title="View product">
+                                    <button @click="viewProduct(product)" class="btn-ghost p-1.5 rounded-lg text-neutral-400 hover:text-info transition-colors" title="View product">
                                         <Eye class="w-4 h-4" />
                                     </button>
-                                    <button @click="openEditProduct(product)" class="btn-ghost p-2 text-neutral-400 hover:text-ink" title="Edit product">
+                                    <button @click="openEditProduct(product)" class="btn-ghost p-1.5 rounded-lg text-neutral-400 hover:text-ink transition-colors" title="Edit product">
                                         <Pencil class="w-4 h-4" />
                                     </button>
-                                    <button @click="openDeleteModal(product)" class="btn-ghost p-2 text-neutral-400 hover:text-danger" title="Delete product">
+                                    <button @click="openDeleteModal(product)" class="btn-ghost p-1.5 rounded-lg text-neutral-400 hover:text-danger transition-colors" title="Delete product">
                                         <Trash2 class="w-4 h-4" />
                                     </button>
                                 </div>
                             </div>
 
                             <!-- Expanded variants -->
-                            <div v-if="expandedProducts.has(product.product_id)" class="mt-3 bg-neutral-50 rounded-xl p-3">
+                            <div v-if="expandedProducts.has(product.product_id)" class="mt-3 bg-neutral-50 rounded-lg p-3">
                                 <div v-if="loadingVariants.has(product.product_id)" class="flex items-center gap-2 text-xs text-neutral-500 py-2">
                                     <Loader2 class="w-4 h-4 animate-spin text-accent" />
                                     Loading variants...
@@ -1444,16 +1448,15 @@ onMounted(() => {
                     </template>
                 </div>
 
-                <!-- Table (lg and up) -->
-                <div class="hidden lg:block overflow-x-auto">
+                <div v-else class="overflow-x-auto">
                     <table class="w-full min-w-225">
-                        <thead class="bg-neutral-50 border-b border-neutral-200">
+                        <thead class="bg-neutral-50/60 border-b border-neutral-200">
                             <tr>
                                 <!-- Checkbox -->
                                 <!-- Expand -->
-                                <th class="px-2 sm:px-3 py-3.5 w-10"></th>
+                                <th class="px-2 sm:px-3 py-3 w-10"></th>
                                 <!-- Checkbox -->
-                                <th class="px-2 sm:px-3 py-3.5 w-12">
+                                <th class="px-2 sm:px-3 py-3 w-12">
                                     <button @click="toggleSelectAll" class="p-0.5">
                                         <CheckSquare v-if="allSelectedOnPage" class="w-4 h-4 text-accent" />
                                         <Square v-else-if="someSelectedOnPage" class="w-4 h-4 text-accent opacity-60" />
@@ -1461,57 +1464,57 @@ onMounted(() => {
                                     </button>
                                 </th>
                                 <!-- Product -->
-                                <th class="px-4 sm:px-6 py-3.5 text-left">
-                                    <button @click="toggleSort('product_name')" class="inline-flex items-center gap-1.5 text-[10px] font-bold text-neutral-500 uppercase tracking-[0.15em] hover:text-ink transition-colors">
+                                <th class="px-4 sm:px-5 py-3 text-left">
+                                    <button @click="toggleSort('product_name')" class="inline-flex items-center gap-1.5 text-[10px] font-semibold text-neutral-400 uppercase tracking-[0.12em] hover:text-ink transition-colors">
                                         Product
                                         <component :is="sortIcon('product_name')" class="w-3 h-3" />
                                     </button>
                                 </th>
                                 <!-- Category -->
-                                <th class="px-4 sm:px-6 py-3.5 text-left text-[10px] font-bold text-neutral-500 uppercase tracking-[0.15em]">
+                                <th class="px-4 sm:px-5 py-3 text-left text-[10px] font-semibold text-neutral-400 uppercase tracking-[0.12em]">
                                     Category
                                 </th>
                                 <!-- Price -->
-                                <th class="px-4 sm:px-6 py-3.5 text-left">
-                                    <button @click="toggleSort('base_price')" class="inline-flex items-center gap-1.5 text-[10px] font-bold text-neutral-500 uppercase tracking-[0.15em] hover:text-ink transition-colors">
+                                <th class="px-4 sm:px-5 py-3 text-left">
+                                    <button @click="toggleSort('base_price')" class="inline-flex items-center gap-1.5 text-[10px] font-semibold text-neutral-400 uppercase tracking-[0.12em] hover:text-ink transition-colors">
                                         Price
                                         <component :is="sortIcon('base_price')" class="w-3 h-3" />
                                     </button>
                                 </th>
                                 <!-- Stock -->
-                                <th class="px-4 sm:px-6 py-3.5 text-left text-[10px] font-bold text-neutral-500 uppercase tracking-[0.15em]">
+                                <th class="px-4 sm:px-5 py-3 text-left text-[10px] font-semibold text-neutral-400 uppercase tracking-[0.12em]">
                                     Stock
                                 </th>
                                 <!-- Tags -->
-                                <th class="px-4 sm:px-6 py-3.5 text-left text-[10px] font-bold text-neutral-500 uppercase tracking-[0.15em]">
+                                <th class="px-4 sm:px-5 py-3 text-left text-[10px] font-semibold text-neutral-400 uppercase tracking-[0.12em]">
                                     Tags
                                 </th>
                                 <!-- Status -->
-                                <th class="px-4 sm:px-6 py-3.5 text-left">
-                                    <button @click="toggleSort('product_status')" class="inline-flex items-center gap-1.5 text-[10px] font-bold text-neutral-500 uppercase tracking-[0.15em] hover:text-ink transition-colors">
+                                <th class="px-4 sm:px-5 py-3 text-left">
+                                    <button @click="toggleSort('product_status')" class="inline-flex items-center gap-1.5 text-[10px] font-semibold text-neutral-400 uppercase tracking-[0.12em] hover:text-ink transition-colors">
                                         Status
                                         <component :is="sortIcon('product_status')" class="w-3 h-3" />
                                     </button>
                                 </th>
                                 <!-- Created -->
-                                <th class="px-4 sm:px-6 py-3.5 text-left">
-                                    <button @click="toggleSort('created_at')" class="inline-flex items-center gap-1.5 text-[10px] font-bold text-neutral-500 uppercase tracking-[0.15em] hover:text-ink transition-colors">
+                                <th class="px-4 sm:px-5 py-3 text-left">
+                                    <button @click="toggleSort('created_at')" class="inline-flex items-center gap-1.5 text-[10px] font-semibold text-neutral-400 uppercase tracking-[0.12em] hover:text-ink transition-colors">
                                         Created
                                         <component :is="sortIcon('created_at')" class="w-3 h-3" />
                                     </button>
                                 </th>
                                 <!-- Actions -->
-                                <th class="px-4 sm:px-6 py-3.5 text-right text-[10px] font-bold text-neutral-500 uppercase tracking-[0.15em]">
+                                <th class="px-4 sm:px-5 py-3 text-right text-[10px] font-semibold text-neutral-400 uppercase tracking-[0.12em]">
                                     Actions
                                 </th>
                             </tr>
                         </thead>
-                        <tbody class="divide-y divide-neutral-200">
+                        <tbody class="divide-y divide-neutral-100">
                             <!-- eslint-disable-next-line vue/no-v-for-template-key -->
                             <template v-for="product in products" :key="product.product_id">
                             <!-- Product Row -->
                             <tr
-                                class="hover:bg-neutral-50/80 transition-colors group cursor-pointer"
+                                class="hover:bg-neutral-50/70 transition-colors group cursor-pointer"
                                 :class="{
                                     'bg-accent/5': selectedIds.has(product.product_id),
                                     'border-b-0': expandedProducts.has(product.product_id)
@@ -1519,7 +1522,7 @@ onMounted(() => {
                                 @click="toggleExpandVariants(product.product_id)"
                             >
                                 <!-- Expand Toggle -->
-                                <td class="px-2 sm:px-3 py-3 w-10">
+                                <td class="px-2 sm:px-3 py-2.5 w-10">
                                     <ChevronRight
                                         class="w-4 h-4 text-neutral-400 transition-transform duration-200"
                                         :class="{ 'rotate-90': expandedProducts.has(product.product_id) }"
@@ -1527,7 +1530,7 @@ onMounted(() => {
                                 </td>
 
                                 <!-- Checkbox -->
-                                <td class="px-2 sm:px-3 py-3" @click.stop>
+                                <td class="px-2 sm:px-3 py-2.5" @click.stop>
                                     <button @click="toggleSelect(product.product_id)" class="p-0.5">
                                         <CheckSquare v-if="selectedIds.has(product.product_id)" class="w-4 h-4 text-accent" />
                                         <Square v-else class="w-4 h-4 text-neutral-300 group-hover:text-neutral-400 transition-colors" />
@@ -1535,11 +1538,11 @@ onMounted(() => {
                                 </td>
 
                                 <!-- Product -->
-                                <td class="px-4 sm:px-6 py-3">
+                                <td class="px-4 sm:px-5 py-2.5">
                                     <div class="flex items-center gap-3">
                                         <button
                                             @click="openImagePreview(product.thumbnail)"
-                                            class="group w-10 h-10 sm:w-12 sm:h-12 bg-neutral-100 rounded-xl overflow-hidden shrink-0 border border-neutral-200 hover:border-accent transition-colors relative"
+                                            class="group w-9 h-9 sm:w-10 sm:h-10 bg-neutral-100 rounded-lg overflow-hidden shrink-0 border border-neutral-200/80 hover:border-accent transition-colors relative"
                                         >
                                             <LazyImage
                                                 v-if="product.thumbnail"
@@ -1554,7 +1557,7 @@ onMounted(() => {
                                             >
                                                 <ImageIcon class="w-5 h-5 text-neutral-300" />
                                             </div>
-                                            <div class="hidden group-hover:flex absolute inset-0 bg-ink/40 items-center justify-center rounded-xl transition-all">
+                                            <div class="hidden group-hover:flex absolute inset-0 bg-ink/40 items-center justify-center rounded-lg transition-all">
                                                 <Eye class="w-4 h-4 text-paper" />
                                             </div>
                                         </button>
@@ -1582,7 +1585,7 @@ onMounted(() => {
                                                 </p>
                                                 <Pencil class="w-3 h-3 text-neutral-300 opacity-0 group-hover/name:opacity-100 transition-opacity shrink-0" />
                                             </div>
-                                            <p class="text-xs text-neutral-400 mt-0.5 truncate max-w-25 sm:max-w-62">
+                                            <p class="text-[11px] text-neutral-400 mt-0.5 truncate max-w-25 sm:max-w-62">
                                                 {{ truncateText(product.description, 40) }}
                                             </p>
                                         </div>
@@ -1590,14 +1593,14 @@ onMounted(() => {
                                 </td>
 
                                 <!-- Category -->
-                                <td class="px-4 sm:px-6 py-3">
-                                    <span class="px-2.5 py-1 bg-info/10 text-info rounded-full text-[10px] font-bold uppercase tracking-wider whitespace-nowrap">
+                                <td class="px-4 sm:px-5 py-2.5">
+                                    <span class="px-2 py-0.5 bg-neutral-100 text-neutral-500 rounded-md text-[10px] font-semibold uppercase tracking-wide whitespace-nowrap">
                                         {{ product.category_name || 'N/A' }}
                                     </span>
                                 </td>
 
                                 <!-- Price -->
-                                <td class="px-4 sm:px-6 py-3">
+                                <td class="px-4 sm:px-5 py-2.5">
                                     <!-- Inline Edit: Price -->
                                     <div v-if="editingCell?.productId === product.product_id && editingCell?.field === 'base_price'"
                                          class="flex items-center" @click.stop>
@@ -1625,11 +1628,11 @@ onMounted(() => {
                                 </td>
 
                                 <!-- Stock -->
-                                <td class="px-4 sm:px-6 py-3">
+                                <td class="px-4 sm:px-5 py-2.5">
                                     <div class="flex items-center gap-2">
                                         <span class="font-bold text-ink tabular-nums text-sm">{{ product.total_stock || 0 }}</span>
                                         <span
-                                            :class="['px-2 py-0.5 rounded-full text-[10px] font-bold border', stockStatus(product.total_stock).class]"
+                                            :class="['px-2 py-0.5 rounded-md text-[10px] font-semibold border', stockStatus(product.total_stock).class]"
                                             class="hidden sm:inline"
                                         >
                                             {{ stockStatus(product.total_stock).label }}
@@ -1709,7 +1712,7 @@ onMounted(() => {
                                             <span
                                                 v-for="tag in (getTags(product) || []).slice(0, 3)"
                                                 :key="tag"
-                                                class="px-2 py-0.5 bg-ink/10 text-ink rounded-full text-[10px] font-bold whitespace-nowrap"
+                                                class="px-2 py-0.5 bg-neutral-100 text-neutral-600 rounded-md text-[10px] font-semibold whitespace-nowrap"
                                             >
                                                 {{ tag }}
                                             </span>
@@ -1732,11 +1735,11 @@ onMounted(() => {
                                 </td>
 
                                 <!-- Status (with quick toggle) -->
-                                <td class="px-4 sm:px-6 py-3">
+                                <td class="px-4 sm:px-5 py-2.5">
                                     <select
                                         :value="product.product_status"
                                         @change="quickStatusChange(product, $event.target.value)"
-                                        :class="['px-2.5 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider border appearance-none cursor-pointer pr-6 min-w-20', statusStyles[product.product_status] || 'bg-neutral-100 text-neutral-700']"
+                                        :class="['px-2 py-0.5 rounded-md text-[10px] font-semibold uppercase tracking-wide border appearance-none cursor-pointer pr-5 min-w-20', statusStyles[product.product_status] || 'bg-neutral-100 text-neutral-600']"
                                     >
                                         <option value="active">Active</option>
                                         <option value="draft">Draft</option>
@@ -1746,8 +1749,8 @@ onMounted(() => {
                                 </td>
 
                                 <!-- Created -->
-                                <td class="px-4 sm:px-6 py-3">
-                                    <span class="text-xs text-neutral-500 whitespace-nowrap">{{ formatDate(product.created_at) }}</span>
+                                <td class="px-4 sm:px-5 py-2.5">
+                                    <span class="text-[11px] text-neutral-400 whitespace-nowrap">{{ formatDate(product.created_at) }}</span>
                                 </td>
 
                                 <!-- Actions -->
@@ -1755,21 +1758,21 @@ onMounted(() => {
                                     <div class="flex items-center justify-end gap-1">
                                         <button
                                             @click="viewProduct(product)"
-                                            class="btn-ghost p-2 text-neutral-400 hover:text-info"
+                                            class="btn-ghost p-1.5 rounded-lg text-neutral-400 hover:text-info transition-colors"
                                             title="View product"
                                         >
                                             <Eye class="w-3.5 h-3.5" />
                                         </button>
                                         <button
                                             @click="openEditProduct(product)"
-                                            class="btn-ghost p-2 text-neutral-400 hover:text-ink"
+                                            class="btn-ghost p-1.5 rounded-lg text-neutral-400 hover:text-ink transition-colors"
                                             title="Edit product"
                                         >
                                             <Pencil class="w-3.5 h-3.5" />
                                         </button>
                                         <button
                                             @click="openDeleteModal(product)"
-                                            class="btn-ghost p-2 text-neutral-400 hover:text-danger"
+                                            class="btn-ghost p-1.5 rounded-lg text-neutral-400 hover:text-danger transition-colors"
                                             title="Delete product"
                                         >
                                             <Trash2 class="w-3.5 h-3.5" />
@@ -1778,8 +1781,8 @@ onMounted(() => {
                                 </td>
                             </tr>
                             <!-- Variant Rows (expandable) -->
-                            <tr v-if="expandedProducts.has(product.product_id)" class="border-b border-neutral-200">
-                                <td colspan="10" class="px-4 sm:px-6 py-0 bg-neutral-50/50">
+                            <tr v-if="expandedProducts.has(product.product_id)" class="border-b border-neutral-100">
+                                <td colspan="10" class="px-4 sm:px-5 py-0 bg-neutral-50/40">
                                     <div class="py-4 pl-12 sm:pl-14">
                                         <!-- Loading variants -->
                                         <div v-if="loadingVariants.has(product.product_id)" class="flex items-center gap-3 text-sm text-neutral-500 py-3">
@@ -1794,7 +1797,7 @@ onMounted(() => {
                                         <div v-else class="overflow-x-auto">
                                             <table class="w-full min-w-125">
                                                 <thead>
-                                                    <tr class="text-[10px] font-bold uppercase tracking-[0.15em] text-neutral-500">
+                                                    <tr class="text-[10px] font-semibold uppercase tracking-[0.12em] text-neutral-400">
                                                         <th class="px-3 py-2 text-left">SKU</th>
                                                         <th class="px-3 py-2 text-left">Options</th>
                                                         <th class="px-3 py-2 text-right">Price</th>
@@ -1802,7 +1805,7 @@ onMounted(() => {
                                                         <th class="px-3 py-2 text-right">Reorder Level</th>
                                                     </tr>
                                                 </thead>
-                                                <tbody class="divide-y divide-neutral-200">
+                                                <tbody class="divide-y divide-neutral-100">
                                                     <tr v-for="variant in productVariants[product.product_id]" :key="variant.variant_id" class="hover:bg-neutral-50 transition-colors">
                                                         <td class="px-3 py-2.5">
                                                             <span class="text-sm font-mono text-ink">{{ variant.sku || '—' }}</span>

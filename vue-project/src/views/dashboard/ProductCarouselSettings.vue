@@ -7,6 +7,7 @@ import {
     LayoutGrid,
     ListOrdered,
     Package,
+    Plus,
     Search,
     ArrowUp,
     ArrowDown,
@@ -23,6 +24,8 @@ import {
     PlayCircle,
     MousePointerClick,
     Type,
+    Trash2,
+    AlertTriangle,
 } from 'lucide-vue-next';
 
 const toast = useToast();
@@ -34,6 +37,11 @@ const tabs = ref([]);
 const maxProductsPerTab = ref(24);
 const minProductsPerTab = ref(1);
 const maxPickedProducts = ref(24);
+const maxTabs = ref(12);
+const maxCustomTabs = ref(8);
+// Keys the storefront maps to an automatic product query; every other key is an
+// admin-created, hand-picked tab.
+const tabKeys = ref([]);
 const busyTabKey = ref(null);      // tab currently being toggled / reordered
 const savingSettings = ref(false);
 
@@ -72,6 +80,12 @@ const settingsDirty = computed(() => (
 
 const activeCount = computed(() => tabs.value.filter(tab => tab.isActive).length);
 
+/** A built-in tab maps to a storefront query; custom tabs are hand-picked only. */
+const isBuiltIn = (key) => tabKeys.value.includes(key);
+
+const canAddTab = computed(() => tabs.value.length < maxTabs.value);
+const customTabCount = computed(() => tabs.value.filter(tab => !isBuiltIn(tab.key)).length);
+
 const applySettings = (incoming = {}) => {
     const merged = { ...DEFAULT_SETTINGS, ...incoming };
     saved.value = { ...merged };
@@ -104,6 +118,9 @@ const load = async () => {
         maxProductsPerTab.value = res.data?.maxProductsPerTab ?? 24;
         minProductsPerTab.value = res.data?.minProductsPerTab ?? 1;
         maxPickedProducts.value = res.data?.maxPickedProducts ?? 24;
+        maxTabs.value = res.data?.maxTabs ?? 12;
+        maxCustomTabs.value = res.data?.maxCustomTabs ?? 8;
+        tabKeys.value = Array.isArray(res.data?.tabKeys) ? res.data.tabKeys : [];
         applySettings(res.data?.settings);
     } catch (err) {
         console.error('Error loading product carousel config:', err);
@@ -215,6 +232,9 @@ const tabErrors = reactive({});
 const emptyTabForm = () => ({ label: '', title: '', productsPerTab: 8, isActive: true });
 const tabForm = reactive(emptyTabForm());
 
+/** The editor is in create mode when no existing tab is being edited. */
+const isCreating = computed(() => editorOpen.value && editingKey.value === null);
+
 // Products hand-picked for the tab being edited. Resolved objects (not just ids)
 // so the list can show names without another round trip.
 const pickedProducts = ref([]);
@@ -277,6 +297,44 @@ watch(pickerQuery, () => {
     pickerTimer = setTimeout(searchCatalogue, 300);
 });
 
+/** Turn a label into a slug-shaped tab key, e.g. "Weekly Deals" → "weekly-deals". */
+const slugify = (value) => String(value ?? '')
+    .toLowerCase()
+    .trim()
+    .replace(/[^a-z0-9]+/g, '-')
+    .replace(/^-+|-+$/g, '')
+    .slice(0, 40);
+
+/** Guarantee the generated key does not collide with an existing tab. */
+const uniqueKey = (base) => {
+    const taken = new Set(tabs.value.map(tab => tab.key));
+    const root = base || 'custom-tab';
+    if (!taken.has(root)) return root;
+
+    let n = 2;
+    let candidate = root;
+    while (taken.has(candidate)) {
+        const suffix = `-${n++}`;
+        candidate = root.slice(0, Math.max(1, 40 - suffix.length)) + suffix;
+    }
+    return candidate;
+};
+
+const openCreate = () => {
+    if (!canAddTab.value) {
+        toast.error(`You can have at most ${maxTabs.value} carousel tabs`);
+        return;
+    }
+    editingKey.value = null;
+    Object.assign(tabForm, emptyTabForm());
+    pickedProducts.value = [];
+    pickerQuery.value = '';
+    pickerResults.value = [];
+    pickerError.value = null;
+    clearTabErrors();
+    editorOpen.value = true;
+};
+
 const openEdit = (tab) => {
     editingKey.value = tab.key;
     Object.assign(tabForm, {
@@ -317,23 +375,62 @@ const validateTab = () => {
 const saveTab = async () => {
     if (!validateTab()) return;
 
+    const label = String(tabForm.label).trim();
+    const title = String(tabForm.title).trim();
+    const productIds = pickedProducts.value.map(product => product.product_id);
+
+    savingTab.value = true;
+
+    // Create: append an admin-authored, hand-picked tab at the end of the list.
+    if (editingKey.value === null) {
+        const created = {
+            key: uniqueKey(slugify(label)),
+            label,
+            title,
+            productsPerTab: Number(tabForm.productsPerTab),
+            isActive: tabForm.isActive,
+            productIds,
+            products: pickedProducts.value.map(product => ({ ...product })),
+            isCustom: true,
+        };
+
+        const ok = await persistTabs([...tabs.value.map(tab => ({ ...tab })), created], {
+            successMessage: 'Tab created',
+            revertTo: tabs.value,
+        });
+        savingTab.value = false;
+        if (ok) closeEditor();
+        return;
+    }
+
     const ordered = tabs.value.map(tab => (
         tab.key === editingKey.value
-            ? {
-                ...tab,
-                label: String(tabForm.label).trim(),
-                title: String(tabForm.title).trim(),
-                productsPerTab: Number(tabForm.productsPerTab),
-                isActive: tabForm.isActive,
-                productIds: pickedProducts.value.map(product => product.product_id),
-            }
+            ? { ...tab, label, title, productsPerTab: Number(tabForm.productsPerTab), isActive: tabForm.isActive, productIds }
             : { ...tab }
     ));
 
-    savingTab.value = true;
     const ok = await persistTabs(ordered, { successMessage: 'Tab updated' });
     savingTab.value = false;
     if (ok) closeEditor();
+};
+
+// ── Delete (custom tabs only) ───────────────────────────────────────────────────
+const pendingDeleteTab = ref(null);
+
+const confirmDeleteTab = (tab) => {
+    if (isBuiltIn(tab.key)) return; // built-in data sources are never removable
+    pendingDeleteTab.value = tab;
+};
+
+const cancelDeleteTab = () => { pendingDeleteTab.value = null; };
+
+const deleteTab = async () => {
+    const tab = pendingDeleteTab.value;
+    if (!tab) return;
+    busyTabKey.value = tab.key;
+    const ordered = tabs.value.filter(entry => entry.key !== tab.key).map(entry => ({ ...entry }));
+    const ok = await persistTabs(ordered, { successMessage: 'Tab removed', revertTo: tabs.value });
+    if (ok) pendingDeleteTab.value = null;
 };
 
 onMounted(load);
@@ -512,8 +609,9 @@ onMounted(load);
 
             <!-- ════════════════════════════════════════════════════════════════
                  SECTION: Tabs
-                 The tab keys map to product queries the storefront runs, so the
-                 list is fixed: rename, reorder, resize and hide — never add.
+                 The four built-in keys map to product queries the storefront runs;
+                 admins rename, reorder, resize and hide those, and can also add
+                 their own hand-picked tabs (arbitrary slug keys).
                  ════════════════════════════════════════════════════════════════ -->
             <div class="card-flat p-6 sm:p-8">
                 <div class="flex items-start gap-4 sm:gap-6 flex-col sm:flex-row">
@@ -522,12 +620,26 @@ onMounted(load);
                     </div>
 
                     <div class="flex-1 min-w-0 w-full">
-                        <div>
-                            <h2 class="text-xl font-bold text-ink">Carousel Tabs</h2>
-                            <p class="text-sm text-neutral-500 mt-1">
-                                {{ activeCount }} of {{ tabs.length }} tab{{ tabs.length === 1 ? '' : 's' }} visible
-                                · rename, reorder and resize them, or hand-pick the products each one shows
-                            </p>
+                        <div class="flex items-start justify-between gap-4 flex-wrap">
+                            <div>
+                                <h2 class="text-xl font-bold text-ink">Carousel Tabs</h2>
+                                <p class="text-sm text-neutral-500 mt-1">
+                                    {{ activeCount }} of {{ tabs.length }} tab{{ tabs.length === 1 ? '' : 's' }} visible
+                                    · rename and reorder them, hand-pick products, or add your own tabs
+                                    <span v-if="maxCustomTabs" class="text-neutral-400">
+                                        ({{ customTabCount }} / {{ maxCustomTabs }} custom)
+                                    </span>
+                                </p>
+                            </div>
+                            <button
+                                @click="openCreate"
+                                :disabled="!canAddTab"
+                                class="btn-accent text-sm gap-2 shrink-0 disabled:opacity-40 disabled:cursor-not-allowed"
+                                :title="canAddTab ? 'Create a new hand-picked tab' : `Tab limit reached (${maxTabs})`"
+                            >
+                                <Plus class="w-4 h-4" />
+                                Add tab
+                            </button>
                         </div>
 
                         <!-- Empty state -->
@@ -555,6 +667,10 @@ onMounted(load);
                                         <p class="font-bold text-ink text-sm truncate">{{ tab.label }}</p>
                                         <span class="px-2 py-0.5 rounded-full bg-white border border-neutral-200 text-[10px] font-bold uppercase tracking-wider text-neutral-600">
                                             {{ tab.key }}
+                                        </span>
+                                        <span v-if="!isBuiltIn(tab.key)"
+                                            class="px-2 py-0.5 rounded-full bg-accent/10 text-accent text-[10px] font-bold uppercase tracking-wider">
+                                            Custom
                                         </span>
                                         <span class="px-2 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider"
                                             :class="tab.isActive ? 'bg-emerald-50 text-emerald-700' : 'bg-neutral-200 text-neutral-600'">
@@ -596,6 +712,11 @@ onMounted(load);
                                         :aria-label="`Edit ${tab.label}`" title="Edit tab">
                                         <Pencil class="w-4 h-4" />
                                     </button>
+                                    <button v-if="!isBuiltIn(tab.key)" @click="confirmDeleteTab(tab)" :disabled="busyTabKey === tab.key"
+                                        class="p-2 rounded-lg text-neutral-500 hover:bg-white hover:text-danger disabled:opacity-30 transition-colors"
+                                        :aria-label="`Delete ${tab.label}`" title="Delete tab">
+                                        <Trash2 class="w-4 h-4" />
+                                    </button>
                                 </div>
                             </li>
                         </ul>
@@ -617,9 +738,13 @@ onMounted(load);
                     <!-- Header -->
                     <div class="flex items-center justify-between gap-4 p-6 border-b border-neutral-100">
                         <div class="min-w-0">
-                            <h3 id="carousel-tab-editor-title" class="text-lg font-bold text-ink">Edit carousel tab</h3>
+                            <h3 id="carousel-tab-editor-title" class="text-lg font-bold text-ink">
+                                {{ isCreating ? 'New carousel tab' : 'Edit carousel tab' }}
+                            </h3>
                             <p class="text-xs text-neutral-500 mt-0.5">
-                                Rename the tab and its heading, or change how many products it shows.
+                                {{ isCreating
+                                    ? 'Name the tab and pick the products it should show.'
+                                    : 'Rename the tab and its heading, or change how many products it shows.' }}
                             </p>
                         </div>
                         <button @click="closeEditor"
@@ -736,7 +861,9 @@ onMounted(load);
                             <div class="mt-3 flex items-center justify-between gap-3 flex-wrap">
                                 <p class="text-[11px] text-neutral-400 flex items-center gap-1">
                                     <Info class="w-3 h-3 shrink-0" />
-                                    Picked products replace this tab's automatic selection.
+                                    {{ isCreating
+                                        ? 'A custom tab shows exactly the products you pick.'
+                                        : "Picked products replace this tab's automatic selection." }}
                                 </p>
                                 <button v-if="pickedProducts.length" @click="clearPicks"
                                     class="text-[11px] font-bold text-neutral-400 hover:text-accent underline underline-offset-2 transition-colors">
@@ -768,7 +895,36 @@ onMounted(load);
                                    transition-all flex items-center gap-2 shadow-sm">
                             <Loader2 v-if="savingTab" class="w-4 h-4 animate-spin" />
                             <Save v-else class="w-4 h-4" />
-                            {{ savingTab ? 'Saving...' : 'Save Tab' }}
+                            {{ savingTab ? 'Saving...' : (isCreating ? 'Create Tab' : 'Save Tab') }}
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </Teleport>
+
+        <!-- Delete custom tab confirmation -->
+        <Teleport to="body">
+            <div v-if="pendingDeleteTab" class="fixed inset-0 z-50 flex items-center justify-center p-4"
+                role="dialog" aria-modal="true" aria-labelledby="carousel-tab-delete-title">
+                <div class="fixed inset-0 bg-ink/60 backdrop-blur-sm" @click="cancelDeleteTab"></div>
+
+                <div class="relative w-full max-w-sm bg-white rounded-3xl shadow-2xl p-6 text-center">
+                    <div class="w-14 h-14 bg-danger/10 rounded-full flex items-center justify-center mx-auto mb-4">
+                        <AlertTriangle class="w-7 h-7 text-danger" />
+                    </div>
+                    <h3 id="carousel-tab-delete-title" class="text-lg font-bold text-ink mb-2">Delete tab</h3>
+                    <p class="text-sm text-neutral-600 mb-6">
+                        Remove <strong class="text-ink">{{ pendingDeleteTab.label }}</strong> and its hand-picked products from the carousel?
+                    </p>
+                    <div class="flex gap-3">
+                        <button @click="cancelDeleteTab"
+                            class="flex-1 px-5 py-3 rounded-xl font-bold text-sm text-neutral-600 hover:bg-neutral-100 transition-colors">
+                            Cancel
+                        </button>
+                        <button @click="deleteTab"
+                            class="flex-1 px-5 py-3 bg-danger text-white rounded-xl font-bold text-sm hover:opacity-90 transition-all flex items-center justify-center gap-2">
+                            <Loader2 v-if="busyTabKey === pendingDeleteTab.key" class="w-4 h-4 animate-spin" />
+                            Delete
                         </button>
                     </div>
                 </div>

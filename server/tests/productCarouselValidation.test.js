@@ -1,5 +1,6 @@
 import { describe, it, expect, vi } from 'vitest';
 import { validateProductCarouselSettings } from '../src/middleware/productCarouselValidation.js';
+import { MAX_TABS } from '../src/services/productCarouselService.js';
 
 /**
  * Run a middleware and report what it did.
@@ -61,15 +62,31 @@ describe('productCarouselValidation — validateProductCarouselSettings', () => 
         expect(res.statusCode).toBe(400);
     });
 
-    it('rejects a tab source the storefront cannot render', () => {
+    it('accepts an admin-created custom tab key', () => {
+        const { next } = run(validateProductCarouselSettings, {
+            body: { product_carousel_tabs: [{ key: 'weekly-deals', label: 'Deals' }] },
+            params: {},
+        });
+
+        expect(next).toHaveBeenCalled();
+    });
+
+    it('rejects a tab key that is not a slug', () => {
         const { next, res } = run(validateProductCarouselSettings, {
-            body: { product_carousel_tabs: [{ key: 'weekly-deals' }] },
+            body: { product_carousel_tabs: [{ key: 'Weekly Deals' }] },
             params: {},
         });
 
         expect(next).not.toHaveBeenCalled();
         expect(res.statusCode).toBe(400);
         expect(res.payload.errors[0].field).toBe('product_carousel_tabs.0.key');
+    });
+
+    it('rejects more tabs than the ceiling allows', () => {
+        const tabs = Array.from({ length: MAX_TABS + 1 }, (_, i) => ({ key: `tab-${i}` }));
+
+        expect(run(validateProductCarouselSettings, { body: { product_carousel_tabs: tabs }, params: {} }).res.statusCode)
+            .toBe(400);
     });
 
     it('requires a key on every tab', () => {
