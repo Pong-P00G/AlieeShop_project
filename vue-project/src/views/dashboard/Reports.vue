@@ -428,9 +428,9 @@ const truncate = (text, len = 60) => {
                                     <p class="text-[10px] uppercase tracking-[0.15em] text-amber-600 font-bold mb-1">Scheduled</p>
                                     <p class="text-lg font-bold text-amber-700 tabular-nums">{{ generatedReport.summary.scheduled_count }}</p>
                                 </div>
-                                <div class="bg-zinc-100 rounded-xl p-4 border border-zinc-200">
-                                    <p class="text-[10px] uppercase tracking-[0.15em] text-zinc-500 font-bold mb-1">Expired</p>
-                                    <p class="text-lg font-bold text-zinc-600 tabular-nums">{{ generatedReport.summary.expired_count }}</p>
+                                <div class="bg-neutral-100 rounded-xl p-4 border border-neutral-200">
+                                    <p class="text-[10px] uppercase tracking-[0.15em] text-neutral-500 font-bold mb-1">Expired</p>
+                                    <p class="text-lg font-bold text-neutral-600 tabular-nums">{{ generatedReport.summary.expired_count }}</p>
                                 </div>
                             </div>
 
@@ -489,7 +489,7 @@ const truncate = (text, len = 60) => {
                                                         Redeemed
                                                     </span>
                                                     <span v-else
-                                                        class="inline-block px-2 py-0.5 rounded-full text-[10px] font-bold uppercase bg-zinc-100 text-zinc-500">
+                                                        class="inline-block px-2 py-0.5 rounded-full text-[10px] font-bold uppercase bg-neutral-100 text-neutral-500">
                                                         Unused
                                                     </span>
                                                 </td>
@@ -515,7 +515,7 @@ const truncate = (text, len = 60) => {
                                             </tr>
                                         </thead>
                                         <tbody class="divide-y divide-neutral-200">
-                                            <tr v-for="t in generatedReport.usage_trend" :key="t.period" class="hover:bg-white">
+                                            <tr v-for="t in generatedReport.usage_trend" :key="t.period" class="hover:bg-paper">
                                                 <td class="px-4 py-2.5 text-sm text-ink">{{ t.period }}</td>
                                                 <td class="px-4 py-2.5 text-sm text-right text-ink tabular-nums">{{ t.times_used }}</td>
                                                 <td class="px-4 py-2.5 text-sm text-right text-ink tabular-nums font-bold">{{ '$' }}{{ formatPrice(t.revenue) }}</td>
@@ -533,7 +533,7 @@ const truncate = (text, len = 60) => {
                                 </div>
                                 <div class="space-y-2">
                                     <div v-for="e in generatedReport.expiring_soon" :key="e.discount_id"
-                                        class="flex items-center justify-between text-sm bg-white/60 rounded-lg px-3 py-2">
+                                        class="flex items-center justify-between text-sm bg-paper/60 rounded-lg px-3 py-2">
                                         <span class="font-semibold text-amber-800">{{ e.product_name }}</span>
                                         <div class="flex items-center gap-3">
                                             <span class="text-amber-600 tabular-nums">{{ '$' }}{{ formatPrice(e.discount_amount) }}</span>

@@ -4,8 +4,29 @@ export const reviewAPI = {
     // ── Public ────────────────────────────────────────────────────────────────
 
     /** Get all approved reviews for a product (with rating summary) */
-    async getProductReviews(productId) {
-        const { data } = await api.get(`/reviews/product/${productId}`);
+    async getProductReviews(productId, { rating = null, sort = null } = {}) {
+        const params = {};
+        if (rating) params.rating = rating;
+        if (sort) params.sort = sort;
+        const { data } = await api.get(`/reviews/product/${productId}`, { params });
+        return data;
+    },
+
+    /** Get review ids the current user has marked helpful for a product */
+    async getMyHelpful(productId) {
+        const { data } = await api.get('/reviews/helpful-mine', { params: { productId } });
+        return data;
+    },
+
+    /** Mark a review as helpful */
+    async markHelpful(reviewId) {
+        const { data } = await api.post(`/reviews/${reviewId}/helpful`);
+        return data;
+    },
+
+    /** Remove a helpful vote from a review */
+    async unmarkHelpful(reviewId) {
+        const { data } = await api.delete(`/reviews/${reviewId}/helpful`);
         return data;
     },
 
@@ -65,6 +86,24 @@ export const reviewAPI = {
             status,
             moderation_note,
         });
+        return data;
+    },
+
+    /** Approve or reject several reviews at once */
+    async bulkModerate(reviewIds, { status, moderation_note }) {
+        const { data } = await api.put('/reviews/bulk-moderate', {
+            review_ids: reviewIds,
+            status,
+            moderation_note,
+        });
+        return data;
+    },
+
+    /** Download reviews as a CSV blob (optional status filter) */
+    async exportReviewsCsv(status = null) {
+        const params = {};
+        if (status && status !== 'all') params.status = status;
+        const { data } = await api.get('/reviews/export', { params, responseType: 'blob' });
         return data;
     },
 };

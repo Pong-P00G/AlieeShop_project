@@ -16,6 +16,7 @@ import {
     Calendar,
     DollarSign,
     CheckCircle,
+    Download,
 } from 'lucide-vue-next';
 
 const toast = useToast();
@@ -170,18 +171,47 @@ const filterBtnClass = (value) => ({
     'bg-neutral-100 text-neutral-700 hover:bg-neutral-200': statusFilter.value !== value
 });
 
+const exporting = ref(false);
+
+const exportCsv = async () => {
+    exporting.value = true;
+    try {
+        const blob = await orderAPI.exportOrdersCsv();
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = 'orders.csv';
+        document.body.appendChild(a);
+        a.click();
+        a.remove();
+        URL.revokeObjectURL(url);
+        toast.success('Export started');
+    } catch (err) {
+        console.error('Export error:', err);
+        toast.error('Failed to export orders');
+    } finally {
+        exporting.value = false;
+    }
+};
+
 onMounted(fetchOrders);
 </script>
 <template>
     <div class="min-h-screen bg-neutral-100">
         <div class="section py-6 sm:py-8">
-            <div class="mb-8">
-                <span class="inline-flex items-center gap-2 text-xs font-bold uppercase tracking-[0.2em] text-accent mb-2">
-                    <ShoppingBag class="w-3.5 h-3.5" />
-                    Orders
-                </span>
-                <h1 class="text-2xl sm:text-3xl font-bold text-ink">Order management</h1>
-                <p class="text-neutral-500 mt-1 text-sm">View, manage, and update customer orders</p>
+            <div class="mb-8 flex items-start justify-between gap-4 flex-wrap">
+                <div>
+                    <span class="inline-flex items-center gap-2 text-xs font-bold uppercase tracking-[0.2em] text-accent mb-2">
+                        <ShoppingBag class="w-3.5 h-3.5" />
+                        Orders
+                    </span>
+                    <h1 class="text-2xl sm:text-3xl font-bold text-ink">Order management</h1>
+                    <p class="text-neutral-500 mt-1 text-sm">View, manage, and update customer orders</p>
+                </div>
+                <button @click="exportCsv" :disabled="exporting" class="btn-outline text-sm gap-1.5 disabled:opacity-50">
+                    <Download class="w-4 h-4" />
+                    {{ exporting ? 'Exporting...' : 'Export CSV' }}
+                </button>
             </div>
 
             <div class="flex flex-wrap gap-2 mb-6">                    <button v-for="status in ['all', ...statuses]" :key="status" @click="statusFilter = status" :class="filterBtnClass(status)" class="px-4 py-2.5 rounded-lg font-semibold text-sm capitalize transition-all active:scale-95">

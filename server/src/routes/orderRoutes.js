@@ -7,6 +7,7 @@ const router = express.Router();
 
 router.post('/', protect, orderController.createOrder);
 router.get('/', protect, orderController.getOrders);
+router.get('/export', protect, isAdmin, orderController.exportOrders);
 router.get('/:id', protect, orderController.getOrder);
 router.post('/:id/pay', protect, paymentController.recordPayment);
 router.get('/:id/payments', protect, paymentController.getOrderPayments);

@@ -161,6 +161,14 @@ export const useAuthStore = defineStore('auth', {
       this.error = null;
     },
 
+    // Merge fields into the cached user (e.g. after uploading an avatar)
+    // without re-fetching the whole session.
+    setUserData(updates) {
+      if (this.user) {
+        this.user = { ...this.user, ...updates };
+      }
+    },
+
     hasPermission(key) {
       return this.permissions.includes(key);
     }

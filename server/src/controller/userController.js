@@ -1,5 +1,44 @@
+import multer from 'multer';
+import path from 'path';
 import * as userService from '../services/userService.js';
 import * as tokenService from '../services/tokenService.js';
+import {
+    PROFILE_IMAGE_PREFIX,
+    isStorageConfigured,
+    uploadObject,
+    deleteObject,
+    keyFromPublicUrl,
+    describeStorageError,
+} from '../services/storageService.js';
+
+// ── Profile picture upload ──────────────────────────────────────────────────
+
+const MAX_PROFILE_PICTURE_SIZE = 5 * 1024 * 1024; // 5MB
+
+// Buffered in memory and streamed to object storage, matching the product
+// image uploader — the API never writes files to its own disk.
+const profilePictureUpload = multer({
+    storage: multer.memoryStorage(),
+    fileFilter: function (req, file, cb) {
+        if (file.mimetype.startsWith('image/')) {
+            cb(null, true);
+        } else {
+            cb(new Error('Only image files are allowed!'), false);
+        }
+    },
+    limits: { fileSize: MAX_PROFILE_PICTURE_SIZE },
+}).single('image');
+
+// Delete the previous avatar from the bucket. Best-effort: a failure here must
+// never block saving the new picture.
+const removeStoredPicture = (url) => {
+    const key = keyFromPublicUrl(url);
+    if (key && key.startsWith(`${PROFILE_IMAGE_PREFIX}/`)) {
+        deleteObject(key).catch((err) =>
+            console.warn('Could not delete old profile picture:', describeStorageError(err))
+        );
+    }
+};
 
 // ── Cookie helpers ────────────────────────────────────────────────────────────
 
@@ -388,6 +427,83 @@ export const updateProfile = async (req, res) => {
         });
     } catch (error) {
         res.status(400).json({ success: false, message: error.message });
+    }
+};
+
+// Upload (or replace) the authenticated user's profile picture
+// POST /api/users/profile/picture  (multipart field: image)
+export const uploadProfilePicture = (req, res) => {
+    profilePictureUpload(req, res, async (err) => {
+        if (err) {
+            return res.status(400).json({ success: false, message: err.message });
+        }
+
+        if (!req.file) {
+            return res.status(400).json({ success: false, message: 'No file uploaded' });
+        }
+
+        if (!isStorageConfigured()) {
+            return res.status(503).json({
+                success: false,
+                message: 'Image storage is not configured.'
+            });
+        }
+
+        try {
+            const existing = await userService.getUserById(req.user.id);
+            if (!existing) {
+                return res.status(404).json({ success: false, message: 'User not found' });
+            }
+
+            // Unique key so the CDN can cache each avatar immutably.
+            const ext = path.extname(req.file.originalname).toLowerCase();
+            const uniqueSuffix = `${Date.now()}-${Math.round(Math.random() * 1e9)}`;
+            const key = `${PROFILE_IMAGE_PREFIX}/user-${req.user.id}-${uniqueSuffix}${ext}`;
+
+            const url = await uploadObject({
+                key,
+                body: req.file.buffer,
+                contentType: req.file.mimetype,
+            });
+
+            const updated = await userService.updateProfilePicture(req.user.id, url);
+
+            // Only remove the old object once the new URL is stored.
+            removeStoredPicture(existing.profile_picture_url);
+
+            const { password_hash, ...userWithoutPassword } = updated;
+            res.json({
+                success: true,
+                message: 'Profile picture updated',
+                data: userWithoutPassword
+            });
+        } catch (error) {
+            console.error('Profile picture upload error:', describeStorageError(error));
+            res.status(500).json({ success: false, message: 'Profile picture upload failed' });
+        }
+    });
+};
+
+// Remove the authenticated user's profile picture
+// DELETE /api/users/profile/picture
+export const deleteProfilePicture = async (req, res) => {
+    try {
+        const existing = await userService.getUserById(req.user.id);
+        if (!existing) {
+            return res.status(404).json({ success: false, message: 'User not found' });
+        }
+
+        const updated = await userService.updateProfilePicture(req.user.id, null);
+        removeStoredPicture(existing.profile_picture_url);
+
+        const { password_hash, ...userWithoutPassword } = updated;
+        res.json({
+            success: true,
+            message: 'Profile picture removed',
+            data: userWithoutPassword
+        });
+    } catch (error) {
+        res.status(500).json({ success: false, message: error.message });
     }
 };
 

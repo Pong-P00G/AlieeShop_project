@@ -4,13 +4,14 @@ import { useAuthStore } from '../stores/auth';
 import { useShopStore } from '../stores/shop';
 import { useRouter } from 'vue-router';
 import { orderAPI } from '../api/orderApi.js';
+import { userAPI } from '../api/userApi.js';
 import { useToast } from '../composables/useToast.js';
 import {
     User, Mail, Phone, MapPin, Calendar, Camera,
     Edit3, Save, LogOut, Package, Heart, Settings as SettingsIcon,
     ShoppingBag, ShieldCheck, Loader2, X, Eye, RefreshCw,
     AlertCircle, ChevronDown, Search, Download, CreditCard,
-    ChevronRight, ArrowRight, Clock, CheckCircle, Truck
+    ChevronRight, ArrowRight, Clock, CheckCircle, Truck, Trash2
 } from 'lucide-vue-next';
 
 const authStore = useAuthStore();
@@ -134,12 +135,70 @@ const reorderAll = async () => {
 // Profile helpers
 const save = async () => {
     isSaving.value = true;
-    await new Promise((r) => setTimeout(r, 700));
-    isSaving.value = false;
-    isSaved.value = true;
-    isEditing.value = false;
-    setTimeout(() => (isSaved.value = false), 2500);
+
+    try {
+        const now = new Date();
+        const joinedDate = authStore.user?.created_at
+            ? new Date(authStore.user.created_at).toLocaleDateString('en-US', { year: 'numeric' })
+            : String(now.getFullYear());
+
+        // Map the on-screen "Full name" field into first/last name so the backend
+        // validation (whose schema requires both) is never hit with an empty value.
+        // Phone / location / bio are client-side display preferences the API has no
+        // column for, so they stay local and are not shipped up.
+        const full = (profile.value.name || '').trim();
+        const first = full.split(/\s+/)[0];
+        const last = profile.value.name
+            ? full.replace(new RegExp(`^(?:${escapeRegExp(first)})\\s*`, 'i'), '').trim()
+            : '';
+
+        const existing = authStore.user || {};
+
+        const payload = {
+            first_name: first || existing.first_name || '',
+            last_name:  last  || existing.last_name  || '',
+            email:      profile.value.email || existing.email || '',
+        };
+
+        // Trim the leading space if the name is one word so last_name isn't empty
+        if (!last && existing.last_name) {
+            payload.last_name = existing.last_name;
+        }
+
+        const res = await userAPI.updateProfile(payload);
+
+        if (res?.success) {
+            authStore.setUserData(res.data || {});
+            // Keep the editable-on-screen value in sync with what the server kept.
+            profile.value.name  = res.data?.username || existing.username || 'Guest User';
+            profile.value.email = res.data?.email    || existing.email    || 'user@aleeshop.com';
+
+            // Client-only display prefs are preserved across the save.
+            profile.value.phone    = profile.value.phone;
+            profile.value.location = profile.value.location;
+            profile.value.bio      = profile.value.bio;
+            profile.value.joined   = res.data?.created_at
+                ? new Date(res.data.created_at).toLocaleDateString('en-US', { year: 'numeric' })
+                : joinedDate;
+
+            isSaved.value  = true;
+            isEditing.value = false;
+
+            setTimeout(() => { isSaved.value = false; }, 2500);
+        } else {
+            throw new Error(res?.message || 'Could not save your profile');
+        }
+    } catch (err) {
+        const message = err.response?.data?.message || err.message || 'Failed to save profile';
+        toast.error(message);
+    } finally {
+        isSaving.value = false;
+    }
 };
+
+function escapeRegExp(s) {
+    return s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+}
 
 const logout = () => {
     authStore.logout();
@@ -155,6 +214,67 @@ const logoutEverywhere = async () => {
 const initials = computed(() =>
     profile.value.name.split(' ').slice(0, 2).map((n) => n[0]).join('').toUpperCase()
 );
+
+// ── Profile picture ─────────────────────────────────────────────────────────
+const avatarInput = ref(null);
+const isUploadingAvatar = ref(false);
+const isRemovingAvatar = ref(false);
+const avatarUrl = computed(() => authStore.user?.profile_picture_url || null);
+const avatarBusy = computed(() => isUploadingAvatar.value || isRemovingAvatar.value);
+
+const triggerAvatarPicker = () => {
+    if (avatarBusy.value) return;
+    avatarInput.value?.click();
+};
+
+const onAvatarSelected = async (event) => {
+    const file = event.target.files?.[0];
+    event.target.value = ''; // allow re-selecting the same file
+    if (!file) return;
+
+    if (!file.type.startsWith('image/')) {
+        toast.error('Please choose an image file');
+        return;
+    }
+    if (file.size > 5 * 1024 * 1024) {
+        toast.error('Image must be 5MB or smaller');
+        return;
+    }
+
+    isUploadingAvatar.value = true;
+    try {
+        const res = await userAPI.uploadProfilePicture(file);
+        if (res?.success) {
+            authStore.setUserData({ profile_picture_url: res.data?.profile_picture_url });
+            toast.success(res.message || 'Profile picture updated');
+        } else {
+            toast.error(res?.message || 'Upload failed');
+        }
+    } catch (err) {
+        toast.error(err.response?.data?.message || 'Upload failed');
+    } finally {
+        isUploadingAvatar.value = false;
+    }
+};
+
+const removeAvatar = async () => {
+    if (avatarBusy.value || !avatarUrl.value) return;
+
+    isRemovingAvatar.value = true;
+    try {
+        const res = await userAPI.deleteProfilePicture();
+        if (res?.success) {
+            authStore.setUserData({ profile_picture_url: null });
+            toast.success('Profile picture removed');
+        } else {
+            toast.error(res?.message || 'Failed to remove picture');
+        }
+    } catch (err) {
+        toast.error(err.response?.data?.message || 'Failed to remove picture');
+    } finally {
+        isRemovingAvatar.value = false;
+    }
+};
 
 // Date formatting
 const formatDate = (dateStr) => {
@@ -199,14 +319,38 @@ onMounted(() => {
 
                     <!-- Avatar -->
                     <div class="relative shrink-0">
-                        <div class="w-24 h-24 md:w-28 md:h-28 rounded-2xl bg-linear-to-br from-accent-400 to-accent-700 flex items-center justify-center text-3xl font-elegant font-bold text-white shadow-2xl ring-4 ring-white/10">
-                            {{ initials }}
+                        <div class="w-24 h-24 md:w-28 md:h-28 rounded-2xl bg-linear-to-br from-accent-400 to-accent-700 flex items-center justify-center text-3xl font-elegant font-bold text-white shadow-2xl ring-4 ring-white/10 overflow-hidden">
+                            <img v-if="avatarUrl" :src="avatarUrl" :alt="profile.name" class="w-full h-full object-cover" />
+                            <span v-else>{{ initials }}</span>
                         </div>
+
+                        <!-- Hidden picker + upload / remove controls -->
+                        <input
+                            ref="avatarInput"
+                            type="file"
+                            accept="image/*"
+                            class="hidden"
+                            @change="onAvatarSelected"
+                            aria-label="Choose profile picture"
+                        />
                         <button
-                            class="absolute -bottom-2 -right-2 w-8 h-8 rounded-xl bg-paper text-ink flex items-center justify-center shadow-lg hover:bg-accent hover:text-white transition-all duration-200"
+                            @click="triggerAvatarPicker"
+                            :disabled="avatarBusy"
+                            class="absolute -bottom-2 -right-2 w-8 h-8 rounded-xl bg-paper text-ink flex items-center justify-center shadow-lg hover:bg-accent hover:text-white transition-all duration-200 disabled:opacity-60"
                             aria-label="Change photo"
                         >
-                            <Camera class="w-3.5 h-3.5" />
+                            <Loader2 v-if="isUploadingAvatar" class="w-3.5 h-3.5 animate-spin" />
+                            <Camera v-else class="w-3.5 h-3.5" />
+                        </button>
+                        <button
+                            v-if="avatarUrl"
+                            @click="removeAvatar"
+                            :disabled="avatarBusy"
+                            class="absolute -bottom-2 -left-2 w-8 h-8 rounded-xl bg-paper text-danger flex items-center justify-center shadow-lg hover:bg-danger hover:text-white transition-all duration-200 disabled:opacity-60"
+                            aria-label="Remove photo"
+                        >
+                            <Loader2 v-if="isRemovingAvatar" class="w-3.5 h-3.5 animate-spin" />
+                            <Trash2 v-else class="w-3.5 h-3.5" />
                         </button>
                     </div>
 

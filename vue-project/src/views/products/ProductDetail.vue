@@ -27,6 +27,7 @@ import {
     Star,
     MessageSquare,
     ThumbsUp,
+    BadgeCheck,
     Truck,
 } from 'lucide-vue-next';
 import { reviewAPI } from '../../api/reviewApi.js';
@@ -302,6 +303,12 @@ const showReviewForm = ref(false);
 const hoverRating = ref(0);
 const userReview = ref(null); // user's own review for this product
 
+// Storefront review controls
+const ratingFilter = ref(0);        // 0 = all stars
+const sortBy = ref('newest');
+const votedHelpful = ref(new Set());
+const helpfulBusy = ref(null);
+
 const isAuthenticated = computed(() => authStore.isAuthenticated);
 
 const averageRating = computed(() => {
@@ -335,15 +342,84 @@ const fetchReviews = async () => {
         if (res.success) {
             reviews.value = res.data.reviews || [];
             ratingSummary.value = res.data.summary || null;
+            ratingFilter.value = 0;
             // Check if current user has already reviewed
             if (isAuthenticated.value) {
                 userReview.value = reviews.value.find(r => r.user_id === authStore.user?.id) || null;
+                // Which reviews this user already voted helpful
+                try {
+                    const helpful = await reviewAPI.getMyHelpful(productId);
+                    if (helpful.success) {
+                        votedHelpful.value = new Set(helpful.data.review_ids || []);
+                    }
+                } catch (err) {
+                    // Non-fatal: the button simply starts in the un-voted state.
+                    console.error('Failed to load helpful votes:', err);
+                }
+            } else {
+                votedHelpful.value = new Set();
             }
         }
     } catch (err) {
         console.error('Failed to load reviews:', err);
     } finally {
         loadingReviews.value = false;
+    }
+};
+
+// Client-side filter/sort over the already-loaded approved reviews.
+const filteredReviews = computed(() => {
+    const list = ratingFilter.value
+        ? reviews.value.filter((r) => r.rating === ratingFilter.value)
+        : reviews.value;
+
+    const sorted = [...list];
+    switch (sortBy.value) {
+        case 'highest': sorted.sort((a, b) => b.rating - a.rating); break;
+        case 'lowest':  sorted.sort((a, b) => a.rating - b.rating); break;
+        case 'helpful': sorted.sort((a, b) => (b.helpful_count || 0) - (a.helpful_count || 0)); break;
+        default:        sorted.sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
+    }
+    return sorted;
+});
+
+const countForRating = (stars) => {
+    const key = ['', 'one_star', 'two_star', 'three_star', 'four_star', 'five_star'][stars];
+    return ratingSummary.value ? (ratingSummary.value[key] || 0) : 0;
+};
+
+const toggleHelpful = async (review) => {
+    if (!isAuthenticated.value) {
+        toast.info('Sign in to mark reviews as helpful');
+        return;
+    }
+    if (review.user_id === authStore.user?.id) return;
+    if (helpfulBusy.value === review.review_id) return;
+
+    helpfulBusy.value = review.review_id;
+    const voted = votedHelpful.value.has(review.review_id);
+    try {
+        const res = voted
+            ? await reviewAPI.unmarkHelpful(review.review_id)
+            : await reviewAPI.markHelpful(review.review_id);
+
+        if (res.success) {
+            const next = new Set(votedHelpful.value);
+            if (voted) {
+                next.delete(review.review_id);
+                review.helpful_count = Math.max(0, (review.helpful_count || 0) - 1);
+            } else {
+                next.add(review.review_id);
+                review.helpful_count = (review.helpful_count || 0) + 1;
+            }
+            votedHelpful.value = next;
+        } else {
+            toast.error(res.message || 'Failed to update');
+        }
+    } catch (err) {
+        toast.error(err.response?.data?.message || 'Failed to update');
+    } finally {
+        helpfulBusy.value = null;
     }
 };
 
@@ -795,6 +871,36 @@ onMounted(async () => {
                     </button>
                 </div>
 
+                <!-- Filter / Sort controls -->
+                <div v-if="!loadingReviews && totalReviews > 0" class="flex flex-wrap items-center gap-3 mb-6">
+                    <div class="flex items-center gap-2 flex-wrap">
+                        <button
+                            @click="ratingFilter = 0"
+                            :class="['px-3 py-1.5 rounded-lg text-xs font-bold transition-colors', ratingFilter === 0 ? 'bg-ink text-paper' : 'bg-neutral-100 text-neutral-600 hover:bg-neutral-200']"
+                        >
+                            All
+                        </button>
+                        <button
+                            v-for="stars in [5, 4, 3, 2, 1]"
+                            :key="stars"
+                            @click="ratingFilter = ratingFilter === stars ? 0 : stars"
+                            :class="['inline-flex items-center gap-1 px-3 py-1.5 rounded-lg text-xs font-bold transition-colors', ratingFilter === stars ? 'bg-ink text-paper' : 'bg-neutral-100 text-neutral-600 hover:bg-neutral-200']"
+                        >
+                            {{ stars }}
+                            <Star class="w-3 h-3 fill-amber-400 text-amber-400" />
+                            <span class="tabular-nums opacity-70">{{ countForRating(stars) }}</span>
+                        </button>
+                    </div>
+                    <div class="ml-auto">
+                        <select v-model="sortBy" class="input-base text-sm py-1.5" aria-label="Sort reviews">
+                            <option value="newest">Newest</option>
+                            <option value="highest">Highest rated</option>
+                            <option value="lowest">Lowest rated</option>
+                            <option value="helpful">Most helpful</option>
+                        </select>
+                    </div>
+                </div>
+
                 <!-- Loading -->
                 <div v-if="loadingReviews" class="py-12 text-center">
                     <div class="w-8 h-8 border-3 border-neutral-200 border-t-accent rounded-full animate-spin mx-auto"></div>
@@ -906,19 +1012,27 @@ onMounted(async () => {
 
                         <!-- Review Cards -->
                         <div
-                            v-for="review in reviews"
+                            v-for="review in filteredReviews"
                             :key="review.review_id"
                             class="card-flat p-5"
                         >
                             <div class="flex items-start gap-3">
-                                <div class="w-9 h-9 rounded-full bg-neutral-100 text-neutral-600 flex items-center justify-center font-bold text-sm shrink-0">
-                                    {{ (review.username || '?').charAt(0).toUpperCase() }}
+                                <div class="w-9 h-9 rounded-full bg-neutral-100 text-neutral-600 flex items-center justify-center font-bold text-sm shrink-0 overflow-hidden">
+                                    <img v-if="review.profile_picture_url" :src="review.profile_picture_url" :alt="review.username" class="w-full h-full object-cover" />
+                                    <span v-else>{{ (review.username || '?').charAt(0).toUpperCase() }}</span>
                                 </div>
                                 <div class="flex-1 min-w-0">
                                     <div class="flex items-center gap-2 flex-wrap">
                                         <p class="font-bold text-sm text-ink">{{ review.username }}</p>
                                         <span class="text-xs text-neutral-400">&middot;</span>
                                         <span class="text-xs text-neutral-500">{{ formatReviewDate(review.created_at) }}</span>
+                                        <span
+                                            v-if="review.verified_purchase"
+                                            class="inline-flex items-center gap-1 px-2 py-0.5 bg-emerald-50 text-emerald-700 rounded-full text-[10px] font-bold uppercase tracking-wide"
+                                        >
+                                            <BadgeCheck class="w-3 h-3" />
+                                            Verified purchase
+                                        </span>
                                     </div>
                                     <div class="flex items-center gap-0.5 mt-1">
                                         <Star
@@ -929,8 +1043,29 @@ onMounted(async () => {
                                     </div>
                                     <p v-if="review.title" class="font-semibold text-sm text-ink mt-2">{{ review.title }}</p>
                                     <p v-if="review.comment" class="text-sm text-neutral-600 leading-relaxed mt-1">{{ review.comment }}</p>
+
+                                    <div class="flex items-center gap-3 mt-3">
+                                        <button
+                                            @click="toggleHelpful(review)"
+                                            :disabled="helpfulBusy === review.review_id || review.user_id === authStore.user?.id"
+                                            :class="['inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold transition-colors',
+                                                votedHelpful.has(review.review_id) ? 'bg-accent/10 text-accent' : 'bg-neutral-100 text-neutral-600 hover:bg-neutral-200',
+                                                review.user_id === authStore.user?.id ? 'opacity-40 cursor-not-allowed' : '']"
+                                            :title="review.user_id === authStore.user?.id ? 'You cannot vote for your own review' : 'Mark this review as helpful'"
+                                        >
+                                            <ThumbsUp class="w-3.5 h-3.5" :class="votedHelpful.has(review.review_id) ? 'fill-accent' : ''" />
+                                            Helpful
+                                            <span v-if="review.helpful_count" class="tabular-nums">({{ review.helpful_count }})</span>
+                                        </button>
+                                    </div>
                                 </div>
                             </div>
+                        </div>
+
+                        <!-- No reviews for the selected rating -->
+                        <div v-if="filteredReviews.length === 0" class="card-flat p-8 text-center">
+                            <p class="text-sm text-neutral-500">No {{ ratingFilter }}-star reviews yet.</p>
+                            <button @click="ratingFilter = 0" class="btn-outline text-sm mt-3">Clear filter</button>
                         </div>
 
                         <!-- User already reviewed notice -->

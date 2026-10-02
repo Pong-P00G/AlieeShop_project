@@ -116,7 +116,7 @@ const hasSelectedItems = computed(() => selectedIds.value.size > 0);
 
 const getStockStatus = (stock) => {
   const n = parseInt(stock || 0);
-  if (n === 0) return { text: 'Out of Stock', class: 'bg-red-50 text-red-700', dotClass: 'bg-red-500' };
+  if (n === 0) return { text: 'Out of Stock', class: 'bg-danger/10 text-danger', dotClass: 'bg-danger' };
   if (n < 10) return { text: 'Low Stock', class: 'bg-amber-50 text-amber-700', dotClass: 'bg-amber-500' };
   return { text: 'In Stock', class: 'bg-emerald-50 text-emerald-700', dotClass: 'bg-emerald-500' };
 };
@@ -124,7 +124,7 @@ const getStockStatus = (stock) => {
 const getChangeTypeBadge = (type) => {
   const map = {
     IN: 'bg-emerald-100 text-emerald-700',
-    OUT: 'bg-red-100 text-red-700',
+    OUT: 'bg-danger/10 text-danger',
     ADJUST: 'bg-amber-100 text-amber-700',
     RETURN: 'bg-blue-100 text-blue-700',
     DAMAGED: 'bg-purple-100 text-purple-700',
@@ -354,30 +354,30 @@ onUnmounted(() => {
       </div>
 
       <div class="grid grid-cols-1 sm:grid-cols-3 gap-4 sm:gap-6 mb-8">
-        <div class="bg-white rounded-2xl p-5 sm:p-6 border border-neutral-100 transition-all duration-200 hover:shadow-md hover:-translate-y-0.5">
+        <div class="card-base p-5 sm:p-6">
           <div class="w-12 h-12 bg-amber-50 rounded-xl flex items-center justify-center mb-4 transition-transform hover:scale-110">
             <Package class="w-6 h-6 text-amber-700" />
           </div>
           <p class="text-neutral-500 text-xs uppercase tracking-[0.15em] font-bold mb-1">Total Products</p>
           <p class="text-3xl font-bold text-ink">{{ products?.length || 0 }}</p>
         </div>
-        <div class="bg-white rounded-2xl p-5 sm:p-6 border border-amber-100 transition-all duration-200 hover:shadow-md hover:-translate-y-0.5">
+        <div class="bg-paper rounded-2xl p-5 sm:p-6 border border-amber-100 transition-all duration-200 hover:shadow-md hover:-translate-y-0.5">
           <div class="w-12 h-12 bg-amber-50 rounded-xl flex items-center justify-center mb-4 transition-transform hover:scale-110">
             <AlertTriangle class="w-6 h-6 text-amber-600" />
           </div>
           <p class="text-neutral-500 text-xs uppercase tracking-[0.15em] font-bold mb-1">Low Stock</p>
           <p class="text-3xl font-bold text-amber-600">{{ lowStockCount }}</p>
         </div>
-        <div class="bg-white rounded-2xl p-5 sm:p-6 border border-red-100 transition-all duration-200 hover:shadow-md hover:-translate-y-0.5">
-          <div class="w-12 h-12 bg-red-50 rounded-xl flex items-center justify-center mb-4 transition-transform hover:scale-110">
-            <XCircle class="w-6 h-6 text-red-600" />
+        <div class="bg-paper rounded-2xl p-5 sm:p-6 border border-danger/20 transition-all duration-200 hover:shadow-md hover:-translate-y-0.5">
+          <div class="w-12 h-12 bg-danger/10 rounded-xl flex items-center justify-center mb-4 transition-transform hover:scale-110">
+            <XCircle class="w-6 h-6 text-danger" />
           </div>
           <p class="text-neutral-500 text-xs uppercase tracking-[0.15em] font-bold mb-1">Out of Stock</p>
-          <p class="text-3xl font-bold text-red-600">{{ outOfStockCount }}</p>
+          <p class="text-3xl font-bold text-danger">{{ outOfStockCount }}</p>
         </div>
       </div>
 
-      <div class="bg-white rounded-2xl p-4 sm:p-5 border border-neutral-100 mb-6">
+      <div class="card-flat p-4 sm:p-5 mb-6">
         <div class="flex flex-col sm:flex-row gap-4">
           <div class="flex-1 relative">
             <Search class="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-neutral-400 pointer-events-none" />
@@ -403,7 +403,7 @@ onUnmounted(() => {
 
       <!-- ── Auto-Restock Suggestions ──────────────────────────── -->
       <div v-if="suggestedRestocks.length > 0"
-        class="bg-white rounded-2xl p-4 sm:p-6 border border-amber-100 mb-6">
+        class="bg-paper rounded-2xl p-4 sm:p-6 border border-amber-100 mb-6">
         <div class="flex items-start justify-between gap-4 mb-4">
           <div class="flex items-center gap-3">
             <div class="w-10 h-10 bg-amber-50 rounded-xl flex items-center justify-center shrink-0">
@@ -439,7 +439,7 @@ onUnmounted(() => {
             <tbody class="divide-y divide-neutral-100">
               <tr v-for="product in suggestedRestocks.slice(0, 10)" :key="product.product_id"
                 class="hover:bg-neutral-50/70 transition-colors"
-                :class="{ 'bg-red-50/30': parseInt(product.total_stock || 0) === 0 }">
+                :class="{ 'bg-danger/10': parseInt(product.total_stock || 0) === 0 }">
                 <td class="px-3 py-2.5">
                   <div class="flex items-center gap-2.5">
                     <div class="w-8 h-8 bg-neutral-100 rounded-lg overflow-hidden shrink-0">
@@ -451,7 +451,7 @@ onUnmounted(() => {
                 </td>
                 <td class="px-3 py-2.5">
                   <span class="text-lg font-bold tabular-nums"
-                    :class="parseInt(product.total_stock || 0) === 0 ? 'text-red-600' : 'text-amber-600'">
+                    :class="parseInt(product.total_stock || 0) === 0 ? 'text-danger' : 'text-amber-600'">
                     {{ product.total_stock || 0 }}
                   </span>
                 </td>
@@ -460,7 +460,7 @@ onUnmounted(() => {
                 </td>
                 <td class="px-3 py-2.5">
                   <span class="text-sm font-bold"
-                    :class="parseInt(product.total_stock || 0) === 0 ? 'text-red-600' : 'text-amber-600'">
+                    :class="parseInt(product.total_stock || 0) === 0 ? 'text-danger' : 'text-amber-600'">
                     {{ Math.max(0, parseInt(product.reorder_level || 5) - parseInt(product.total_stock || 0)) }}
                   </span>
                 </td>
@@ -493,7 +493,7 @@ onUnmounted(() => {
           <button @click="clearSelection" class="text-xs text-neutral-400 hover:text-white underline underline-offset-2 transition-colors">Clear</button>
         </div>
         <button @click="openBulkUpdateModal"
-          class="px-4 py-2 bg-white/10 hover:bg-white/20 rounded-xl text-xs font-bold transition-all">
+          class="px-4 py-2 bg-paper/10 hover:bg-paper/20 rounded-xl text-xs font-bold transition-all">
           Update Stock
         </button>
       </div>
@@ -502,7 +502,7 @@ onUnmounted(() => {
         <RefreshCw class="w-10 h-10 text-neutral-300 animate-spin" />
       </div>
 
-      <div v-else class="bg-white rounded-2xl border border-neutral-100 overflow-hidden">
+      <div v-else class="card-flat overflow-hidden">
         <div class="overflow-x-auto">
           <table class="w-full min-w-225">
             <thead class="bg-neutral-50/60 border-b border-neutral-200">
@@ -596,7 +596,7 @@ onUnmounted(() => {
     <!-- Single Stock Update Modal -->
     <div v-if="showUpdateModal" @click="closeUpdateModal"
       class="fixed inset-0 bg-ink/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-      <div @click.stop class="bg-white rounded-2xl p-5 sm:p-8 max-w-md w-full shadow-2xl max-h-[90vh] overflow-y-auto animate-[scale-in_0.25s_ease-out]">
+      <div @click.stop class="bg-paper rounded-2xl p-5 sm:p-8 max-w-md w-full shadow-2xl max-h-[90vh] overflow-y-auto animate-[scale-in_0.25s_ease-out]">
         <h3 class="text-xl font-bold text-ink mb-6">Update Stock</h3>
 
         <div class="flex items-center gap-4 mb-6 p-4 bg-neutral-50 rounded-xl">
@@ -645,7 +645,7 @@ onUnmounted(() => {
     <!-- Bulk Stock Update Modal -->
     <div v-if="showBulkUpdateModal" @click="closeBulkUpdateModal"
       class="fixed inset-0 bg-ink/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-      <div @click.stop class="bg-white rounded-2xl p-5 sm:p-8 max-w-md w-full shadow-2xl max-h-[90vh] overflow-y-auto animate-[scale-in_0.25s_ease-out]">
+      <div @click.stop class="bg-paper rounded-2xl p-5 sm:p-8 max-w-md w-full shadow-2xl max-h-[90vh] overflow-y-auto animate-[scale-in_0.25s_ease-out]">
         <h3 class="text-xl font-bold text-ink mb-2">Bulk Stock Update</h3>
         <p class="text-sm text-neutral-500 mb-6">Update stock for <strong class="text-ink">{{ selectedIds.size }}</strong> selected product(s)</p>
 
@@ -681,7 +681,7 @@ onUnmounted(() => {
     <!-- Stock History Modal -->
     <div v-if="showHistoryModal" @click="closeHistoryModal"
       class="fixed inset-0 bg-ink/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-      <div @click.stop class="bg-white rounded-2xl p-5 sm:p-8 max-w-lg w-full shadow-2xl max-h-[90vh] overflow-y-auto animate-[scale-in_0.25s_ease-out]">
+      <div @click.stop class="bg-paper rounded-2xl p-5 sm:p-8 max-w-lg w-full shadow-2xl max-h-[90vh] overflow-y-auto animate-[scale-in_0.25s_ease-out]">
         <div class="flex items-center justify-between mb-6">
           <div>
             <span class="text-[10px] uppercase tracking-[0.2em] text-amber-700 font-bold">Stock History</span>
@@ -711,7 +711,7 @@ onUnmounted(() => {
             <div class="flex-1 min-w-0">
               <div class="flex items-baseline gap-2">
                 <span v-if="log.change_type === 'IN'" class="text-emerald-600 font-bold text-lg">+{{ log.quantity }}</span>
-                <span v-else-if="log.change_type === 'OUT'" class="text-red-600 font-bold text-lg">-{{ log.quantity }}</span>
+                <span v-else-if="log.change_type === 'OUT'" class="text-danger font-bold text-lg">-{{ log.quantity }}</span>
                 <span v-else class="text-amber-600 font-bold text-lg">{{ log.quantity }}</span>
               </div>
               <p v-if="log.reason" class="text-xs text-neutral-500 mt-0.5">{{ log.reason }}</p>

@@ -95,6 +95,8 @@ const initials = computed(() => {
     return name.charAt(0).toUpperCase();
 });
 
+const avatarUrl = computed(() => user.value?.profile_picture_url || null);
+
 const toggleDropdown = () => {
     isDropdownOpen.value = !isDropdownOpen.value;
 };
@@ -319,8 +321,9 @@ watch(route, () => {
                                 aria-haspopup="true"
                                 aria-label="User menu"
                             >
-                                <span class="w-7 h-7 rounded-full bg-accent ring-2 ring-paper/20 flex items-center justify-center text-xs font-bold text-white shrink-0">
-                                    {{ initials }}
+                                <span class="w-7 h-7 rounded-full bg-accent ring-2 ring-paper/20 flex items-center justify-center text-xs font-bold text-white shrink-0 overflow-hidden">
+                                    <img v-if="avatarUrl" :src="avatarUrl" :alt="user?.username || 'User'" class="w-full h-full object-cover" />
+                                    <template v-else>{{ initials }}</template>
                                 </span>
                                 <ChevronDown class="w-3.5 h-3.5 opacity-80 transition-transform duration-200 shrink-0" :class="{ 'rotate-180': isDropdownOpen }" />
                             </button>
@@ -533,8 +536,9 @@ watch(route, () => {
                         <template v-if="isAuthenticated && user">
                             <div class="space-y-2">
                                 <div class="flex items-center gap-3 px-3 py-2.5 bg-paper border border-neutral-200 rounded-xl">
-                                    <div class="w-9 h-9 rounded-full bg-accent flex items-center justify-center text-sm font-bold text-white shrink-0">
-                                        {{ initials }}
+                                    <div class="w-9 h-9 rounded-full bg-accent flex items-center justify-center text-sm font-bold text-white shrink-0 overflow-hidden">
+                                        <img v-if="avatarUrl" :src="avatarUrl" :alt="user?.username || 'User'" class="w-full h-full object-cover" />
+                                        <template v-else>{{ initials }}</template>
                                     </div>
                                     <div class="min-w-0 flex-1">
                                         <p class="text-sm font-bold text-ink truncate">{{ user.username || 'User' }}</p>

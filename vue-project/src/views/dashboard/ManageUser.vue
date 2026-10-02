@@ -457,8 +457,16 @@ onMounted(() => {
                 <!-- User -->
                 <td class="px-6 py-2.5">
                   <div>
-                    <p class="font-semibold text-ink">{{ user.username }}</p>
-                    <p class="text-[11px] text-neutral-400">{{ user.email }}</p>
+                    <div class="flex items-center gap-3">
+                      <div class="w-8 h-8 rounded-full bg-neutral-100 flex items-center justify-center font-bold text-sm shrink-0 overflow-hidden">
+                        <img v-if="user.profile_picture_url" :src="user.profile_picture_url" :alt="user.username" class="w-full h-full object-cover" />
+                        <span v-else>{{ user.username?.charAt(0).toUpperCase() }}</span>
+                      </div>
+                      <div>
+                        <p class="font-semibold text-ink">{{ user.username }}</p>
+                        <p class="text-[11px] text-neutral-400">{{ user.email }}</p>
+                      </div>
+                    </div>
                   </div>
                 </td>
 

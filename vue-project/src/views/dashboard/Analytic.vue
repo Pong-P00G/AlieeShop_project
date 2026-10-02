@@ -368,14 +368,14 @@ const metricValue = (key) => {
 const growthInfo = (value) => {
     const num = parseFloat(value) || 0;
     if (num > 0) return { label: `+${num}%`, class: 'text-emerald-700 bg-emerald-50' };
-    if (num < 0) return { label: `${num}%`, class: 'text-red-700 bg-red-50' };
+    if (num < 0) return { label: `${num}%`, class: 'text-danger bg-danger/10' };
     return { label: '0%', class: 'text-neutral-400 bg-neutral-100' };
 };
 
 const metricCards = [
     { label: 'Total Revenue',       icon: DollarSign,  iconBg: 'bg-amber-50',  iconColor: 'text-amber-700',
       valueKey: 'totalSales',        growthKey: 'revenue', prefix: '$' },
-    { label: 'Total Orders',        icon: ShoppingBag, iconBg: 'bg-zinc-50',   iconColor: 'text-zinc-800',
+    { label: 'Total Orders',        icon: ShoppingBag, iconBg: 'bg-neutral-50',   iconColor: 'text-neutral-800',
       valueKey: 'totalOrders',       growthKey: 'orders', prefix: '' },
     { label: 'Total Customers',     icon: Users,       iconBg: 'bg-sky-50',    iconColor: 'text-sky-700',
       valueKey: 'totalCustomers',    growthKey: 'customers', prefix: '' },
@@ -433,19 +433,19 @@ onMounted(() => { fetchData(); });
                         <BarChart3 class="w-3.5 h-3.5" />
                         Analytics
                     </span>
-                    <h1 class="text-2xl sm:text-3xl font-bold text-zinc-900">Performance overview</h1>
-                    <p class="text-zinc-500 mt-1 text-sm">Track your store performance <span class="font-semibold text-zinc-700">{{ timeframeLabel }}</span></p>
+                    <h1 class="text-2xl sm:text-3xl font-bold text-neutral-900">Performance overview</h1>
+                    <p class="text-neutral-500 mt-1 text-sm">Track your store performance <span class="font-semibold text-neutral-700">{{ timeframeLabel }}</span></p>
                 </div>
 
                 <div class="flex items-center gap-3">
                     <button @click="fetchData" :disabled="loading"
-                        class="w-9 h-9 flex items-center justify-center rounded-xl border border-zinc-200 bg-white hover:bg-zinc-50 hover:border-zinc-300 transition-all disabled:opacity-50"
+                        class="w-9 h-9 flex items-center justify-center rounded-xl border border-neutral-200 bg-paper hover:bg-neutral-50 hover:border-neutral-300 transition-all disabled:opacity-50"
                         title="Refresh data">
-                        <RefreshCw class="w-4 h-4 text-zinc-600" :class="{ 'animate-spin': loading }" />
+                        <RefreshCw class="w-4 h-4 text-neutral-600" :class="{ 'animate-spin': loading }" />
                     </button>
                     <select v-model="timeframe" :disabled="loading"
-                        class="appearance-none bg-white border border-zinc-200 rounded-xl px-4 py-2.5 pr-10 text-sm font-medium text-zinc-700
-                               focus:outline-none focus:ring-2 focus:ring-zinc-900/20 focus:border-zinc-900
+                        class="appearance-none bg-paper border border-neutral-200 rounded-xl px-4 py-2.5 pr-10 text-sm font-medium text-neutral-700
+                               focus:outline-none focus:ring-2 focus:ring-neutral-900/20 focus:border-neutral-900
                                disabled:opacity-50 transition-all cursor-pointer
                                bg-[url('data:image/svg+xml;charset=utf-8,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%200%2020%2020%22%20fill%3D%22%2371717a%22%3E%3Cpath%20fill-rule%3D%22evenodd%22%20d%3D%22M5.23%207.21a.75.75%200%20011.06.02L10%2011.168l3.71-3.938a.75.75%200%20111.08%201.04l-4.25%204.5a.75.75%200%2001-1.08%200l-4.25-4.5a.75.75%200%2001.02-1.06z%22%20clip-rule%3D%22evenodd%22%2F%3E%3C%2Fsvg%3E')]
                                bg-no-repeat bg-[right_0.75rem_center] bg-[length:1.25rem]">
@@ -459,7 +459,7 @@ onMounted(() => { fetchData(); });
             <!-- ── Loading Skeleton ──────────────────────────────────────── -->
             <div v-if="loading && !analyticsData" class="space-y-6">
                 <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-6">
-                    <div v-for="i in 4" :key="i" class="bg-white rounded-2xl p-5 sm:p-6 border border-zinc-100">
+                    <div v-for="i in 4" :key="i" class="card-flat p-5 sm:p-6">
                         <div class="flex items-center justify-between mb-4">
                             <div class="w-11 h-11 skeleton-shimmer rounded-xl"></div>
                             <div class="w-16 h-6 skeleton-shimmer rounded-full"></div>
@@ -469,12 +469,12 @@ onMounted(() => { fetchData(); });
                     </div>
                 </div>
                 <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
-                    <div class="lg:col-span-2 bg-white rounded-2xl p-6 border border-zinc-100 h-80">
+                    <div class="lg:col-span-2 card-flat p-6 h-80">
                         <div class="h-4 w-20 skeleton-shimmer rounded mb-2"></div>
                         <div class="h-5 w-32 skeleton-shimmer rounded mb-6"></div>
                         <div class="h-52 skeleton-shimmer rounded-lg"></div>
                     </div>
-                    <div class="bg-white rounded-2xl p-6 border border-zinc-100 h-80">
+                    <div class="card-flat p-6 h-80">
                         <div class="h-4 w-20 skeleton-shimmer rounded mb-2"></div>
                         <div class="h-5 w-36 skeleton-shimmer rounded mb-6"></div>
                         <div class="h-44 w-44 skeleton-shimmer rounded-full mx-auto"></div>
@@ -484,17 +484,17 @@ onMounted(() => { fetchData(); });
 
             <!-- ── Error State ──────────────────────────────────────────── -->
             <div v-else-if="error && !analyticsData"
-                class="bg-white rounded-2xl p-6 sm:p-8 border border-red-100 shadow-sm">
+                class="bg-paper rounded-2xl p-6 sm:p-8 border border-danger/20 shadow-sm">
                 <div class="flex items-start gap-4">
-                    <div class="w-12 h-12 rounded-2xl bg-red-50 flex items-center justify-center shrink-0">
-                        <AlertCircle class="h-6 w-6 text-red-500" />
+                    <div class="w-12 h-12 rounded-2xl bg-danger/10 flex items-center justify-center shrink-0">
+                        <AlertCircle class="h-6 w-6 text-danger" />
                     </div>
                     <div class="flex-1 min-w-0">
-                        <h3 class="text-lg font-bold text-zinc-900">Failed to load analytics</h3>
-                        <p class="text-zinc-500 text-sm mt-1">{{ error }}</p>
+                        <h3 class="text-lg font-bold text-neutral-900">Failed to load analytics</h3>
+                        <p class="text-neutral-500 text-sm mt-1">{{ error }}</p>
                     </div>
                     <button @click="fetchData"
-                        class="shrink-0 inline-flex items-center gap-2 px-4 py-2.5 bg-zinc-900 text-white text-sm font-semibold rounded-xl hover:bg-zinc-800 transition-colors">
+                        class="shrink-0 inline-flex items-center gap-2 px-4 py-2.5 bg-neutral-900 text-white text-sm font-semibold rounded-xl hover:bg-neutral-800 transition-colors">
                         <RefreshCw class="w-4 h-4" />
                         Retry
                     </button>
@@ -507,7 +507,7 @@ onMounted(() => { fetchData(); });
                 <!-- ── Key Metrics ────────────────────────────────── -->
                 <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-6">
                     <div v-for="metric in metricCards" :key="metric.label"
-                        class="bg-white rounded-2xl p-5 sm:p-6 border border-zinc-100 hover:border-zinc-200 hover:shadow-md hover:-translate-y-0.5 transition-all duration-200">
+                        class="card-base p-5 sm:p-6">
                         <div class="flex items-center justify-between mb-4">
                             <div :class="['w-11 h-11 rounded-xl flex items-center justify-center transition-transform hover:scale-110', metric.iconBg]">
                                 <component :is="metric.icon" :class="['w-5 h-5', metric.iconColor]" />
@@ -519,8 +519,8 @@ onMounted(() => { fetchData(); });
                                 {{ growthInfo(growth[metric.growthKey]).label }}
                             </span>
                         </div>
-                        <p class="text-zinc-500 text-xs uppercase tracking-[0.15em] font-bold mb-1">{{ metric.label }}</p>
-                        <p class="text-2xl sm:text-3xl font-bold text-zinc-900 tabular-nums tracking-tight">
+                        <p class="text-neutral-500 text-xs uppercase tracking-[0.15em] font-bold mb-1">{{ metric.label }}</p>
+                        <p class="text-2xl sm:text-3xl font-bold text-neutral-900 tabular-nums tracking-tight">
                             <template v-if="metric.prefix">{{ metric.prefix }}</template>
                             <template v-if="metric.valueKey === 'totalSales' || metric.valueKey === 'averageOrderValue'">
                                 {{ metricValue(metric.valueKey) >= 1000
@@ -538,22 +538,22 @@ onMounted(() => { fetchData(); });
                 <!-- ── Charts Row 1: Sales Trend + Category ────────── -->
                 <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
                     <!-- Revenue Trend (Line Chart) -->
-                    <div class="lg:col-span-2 bg-white rounded-2xl p-5 sm:p-6 border border-zinc-100 hover:shadow-md hover:-translate-y-0.5 transition-all duration-200">
+                    <div class="lg:col-span-2 card-base p-5 sm:p-6">
                         <div class="flex items-center justify-between mb-6">
                             <div>
                                 <span class="text-[10px] uppercase tracking-[0.2em] text-amber-700 font-bold">Revenue trend</span>
-                                <h2 class="font-bold text-xl text-zinc-900 mt-1">Sales over time</h2>
+                                <h2 class="font-bold text-xl text-neutral-900 mt-1">Sales over time</h2>
                             </div>
-                            <div class="flex items-center gap-2 text-xs text-zinc-400">
-                                <span class="inline-block w-3 h-0.5 bg-zinc-900 rounded"></span>
+                            <div class="flex items-center gap-2 text-xs text-neutral-400">
+                                <span class="inline-block w-3 h-0.5 bg-neutral-900 rounded"></span>
                                 <span>Revenue</span>
                             </div>
                         </div>
 
                         <div v-if="salesData.length === 0" class="flex flex-col items-center justify-center py-16 text-center">
-                            <BarChart3 class="w-14 h-14 text-zinc-200 mb-4" />
-                            <p class="text-zinc-500 font-semibold">No sales data {{ timeframeLabel }}</p>
-                            <p class="text-xs text-zinc-400 mt-1">Orders will appear here once customers start purchasing.</p>
+                            <BarChart3 class="w-14 h-14 text-neutral-200 mb-4" />
+                            <p class="text-neutral-500 font-semibold">No sales data {{ timeframeLabel }}</p>
+                            <p class="text-xs text-neutral-400 mt-1">Orders will appear here once customers start purchasing.</p>
                         </div>
 
                         <div v-else class="h-64 sm:h-72">
@@ -562,16 +562,16 @@ onMounted(() => { fetchData(); });
                     </div>
 
                     <!-- Sales by Category (Doughnut) -->
-                    <div class="bg-white rounded-2xl p-5 sm:p-6 border border-zinc-100 hover:shadow-md hover:-translate-y-0.5 transition-all duration-200">
+                    <div class="card-base p-5 sm:p-6">
                         <div class="mb-6">
                             <span class="text-[10px] uppercase tracking-[0.2em] text-amber-700 font-bold">Breakdown</span>
-                            <h2 class="font-bold text-xl text-zinc-900 mt-1">Sales by category</h2>
+                            <h2 class="font-bold text-xl text-neutral-900 mt-1">Sales by category</h2>
                         </div>
 
                         <div v-if="categoryData.length === 0" class="flex flex-col items-center justify-center py-16 text-center">
-                            <Package class="w-14 h-14 text-zinc-200 mb-4" />
-                            <p class="text-zinc-500 font-semibold">No category data yet</p>
-                            <p class="text-xs text-zinc-400 mt-1">Categories will populate as products are ordered.</p>
+                            <Package class="w-14 h-14 text-neutral-200 mb-4" />
+                            <p class="text-neutral-500 font-semibold">No category data yet</p>
+                            <p class="text-xs text-neutral-400 mt-1">Categories will populate as products are ordered.</p>
                         </div>
 
                         <div v-else class="h-64 flex items-center justify-center">
@@ -583,18 +583,18 @@ onMounted(() => { fetchData(); });
                 <!-- ── Charts Row 2: Products + Orders ───────────── │ -->
                 <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
                     <!-- Top Products (Horizontal Bar) -->
-                    <div class="lg:col-span-2 bg-white rounded-2xl p-5 sm:p-6 border border-zinc-100 hover:shadow-md hover:-translate-y-0.5 transition-all duration-200">
+                    <div class="lg:col-span-2 card-base p-5 sm:p-6">
                         <div class="flex items-center justify-between mb-6">
                             <div>
                                 <span class="text-[10px] uppercase tracking-[0.2em] text-amber-700 font-bold">Best sellers</span>
-                                <h2 class="font-bold text-xl text-zinc-900 mt-1">Top performing products</h2>
+                                <h2 class="font-bold text-xl text-neutral-900 mt-1">Top performing products</h2>
                             </div>
                         </div>
 
                         <div v-if="productPerformance.length === 0" class="flex flex-col items-center justify-center py-16 text-center">
-                            <ShoppingBag class="w-14 h-14 text-zinc-200 mb-4" />
-                            <p class="text-zinc-500 font-semibold">No product sales {{ timeframeLabel }}</p>
-                            <p class="text-xs text-zinc-400 mt-1">Products will appear once they are added to orders.</p>
+                            <ShoppingBag class="w-14 h-14 text-neutral-200 mb-4" />
+                            <p class="text-neutral-500 font-semibold">No product sales {{ timeframeLabel }}</p>
+                            <p class="text-xs text-neutral-400 mt-1">Products will appear once they are added to orders.</p>
                         </div>
 
                         <div v-else class="h-72">
@@ -605,15 +605,15 @@ onMounted(() => { fetchData(); });
                     <!-- Order Status (Pie) + Customer Trend -->
                     <div class="space-y-6">
                         <!-- Order Status -->
-                        <div class="bg-white rounded-2xl p-5 sm:p-6 border border-zinc-100 hover:shadow-md hover:-translate-y-0.5 transition-all duration-200">
+                        <div class="card-base p-5 sm:p-6">
                             <div class="mb-4">
                                 <span class="text-[10px] uppercase tracking-[0.2em] text-amber-700 font-bold">Orders</span>
-                                <h2 class="font-bold text-lg text-zinc-900 mt-1">Order status</h2>
+                                <h2 class="font-bold text-lg text-neutral-900 mt-1">Order status</h2>
                             </div>
 
                             <div v-if="!orderStats" class="flex flex-col items-center justify-center py-10 text-center">
-                                <Clock class="w-10 h-10 text-zinc-200 mb-3" />
-                                <p class="text-zinc-500 text-sm font-medium">No order data</p>
+                                <Clock class="w-10 h-10 text-neutral-200 mb-3" />
+                                <p class="text-neutral-500 text-sm font-medium">No order data</p>
                             </div>
 
                             <div v-else class="h-52 flex items-center justify-center">
@@ -622,15 +622,15 @@ onMounted(() => { fetchData(); });
                         </div>
 
                         <!-- Customer Trend -->
-                        <div class="bg-white rounded-2xl p-5 sm:p-6 border border-zinc-100 hover:shadow-md hover:-translate-y-0.5 transition-all duration-200">
+                        <div class="card-base p-5 sm:p-6">
                             <div class="mb-4">
                                 <span class="text-[10px] uppercase tracking-[0.2em] text-amber-700 font-bold">Customers</span>
-                                <h2 class="font-bold text-lg text-zinc-900 mt-1">Customer acquisition</h2>
+                                <h2 class="font-bold text-lg text-neutral-900 mt-1">Customer acquisition</h2>
                             </div>
 
                             <div v-if="salesData.length === 0" class="flex flex-col items-center justify-center py-10 text-center">
-                                <UserPlus class="w-10 h-10 text-zinc-200 mb-3" />
-                                <p class="text-zinc-500 text-sm font-medium">No customer data yet</p>
+                                <UserPlus class="w-10 h-10 text-neutral-200 mb-3" />
+                                <p class="text-neutral-500 text-sm font-medium">No customer data yet</p>
                             </div>
 
                             <div v-else class="h-36">
@@ -641,55 +641,55 @@ onMounted(() => { fetchData(); });
                 </div>
 
                 <!-- ── Detailed Product Performance Table ─────────── -->
-                <div class="bg-white rounded-2xl p-5 sm:p-6 border border-zinc-100 hover:shadow-md hover:-translate-y-0.5 transition-all duration-200">
+                <div class="card-base p-5 sm:p-6">
                     <div class="mb-6">
                         <span class="text-[10px] uppercase tracking-[0.2em] text-amber-700 font-bold">Details</span>
-                        <h2 class="font-bold text-xl text-zinc-900 mt-1">Product performance details</h2>
+                        <h2 class="font-bold text-xl text-neutral-900 mt-1">Product performance details</h2>
                     </div>
 
                     <div v-if="productPerformance.length === 0" class="text-center py-12">
-                        <ShoppingBag class="w-12 h-12 text-zinc-200 mx-auto mb-3" />
-                        <p class="text-zinc-500 font-medium">No data to display</p>
+                        <ShoppingBag class="w-12 h-12 text-neutral-200 mx-auto mb-3" />
+                        <p class="text-neutral-500 font-medium">No data to display</p>
                     </div>
 
                     <div v-else class="overflow-x-auto">
                         <table class="w-full min-w-[600px]">
                             <thead>
-                                <tr class="border-b border-zinc-100">
-                                    <th class="px-4 sm:px-6 py-3.5 text-left text-[10px] font-bold uppercase tracking-[0.2em] text-zinc-500">Product</th>
-                                    <th class="px-4 sm:px-6 py-3.5 text-right text-[10px] font-bold uppercase tracking-[0.2em] text-zinc-500">Units sold</th>
-                                    <th class="px-4 sm:px-6 py-3.5 text-right text-[10px] font-bold uppercase tracking-[0.2em] text-zinc-500">Revenue</th>
-                                    <th class="px-4 sm:px-6 py-3.5 text-right text-[10px] font-bold uppercase tracking-[0.2em] text-zinc-500">Performance</th>
+                                <tr class="border-b border-neutral-100">
+                                    <th class="px-4 sm:px-6 py-3.5 text-left text-[10px] font-bold uppercase tracking-[0.2em] text-neutral-500">Product</th>
+                                    <th class="px-4 sm:px-6 py-3.5 text-right text-[10px] font-bold uppercase tracking-[0.2em] text-neutral-500">Units sold</th>
+                                    <th class="px-4 sm:px-6 py-3.5 text-right text-[10px] font-bold uppercase tracking-[0.2em] text-neutral-500">Revenue</th>
+                                    <th class="px-4 sm:px-6 py-3.5 text-right text-[10px] font-bold uppercase tracking-[0.2em] text-neutral-500">Performance</th>
                                 </tr>
                             </thead>
-                            <tbody class="divide-y divide-zinc-50">
+                            <tbody class="divide-y divide-neutral-50">
                                 <tr v-for="(product, idx) in productPerformance" :key="product.name"
-                                    class="hover:bg-zinc-50/80 transition-colors">
+                                    class="hover:bg-neutral-50/80 transition-colors">
                                     <td class="px-4 sm:px-6 py-4">
                                         <div class="flex items-center gap-3">
-                                            <span class="w-6 h-6 rounded-lg bg-zinc-100 flex items-center justify-center text-xs font-bold text-zinc-500 shrink-0">
+                                            <span class="w-6 h-6 rounded-lg bg-neutral-100 flex items-center justify-center text-xs font-bold text-neutral-500 shrink-0">
                                                 {{ idx + 1 }}
                                             </span>
-                                            <p class="font-semibold text-zinc-900 truncate">{{ product.name }}</p>
+                                            <p class="font-semibold text-neutral-900 truncate">{{ product.name }}</p>
                                         </div>
                                     </td>
                                     <td class="px-4 sm:px-6 py-4 text-right">
-                                        <span class="text-sm font-bold text-zinc-900 tabular-nums">{{ product.units }}</span>
+                                        <span class="text-sm font-bold text-neutral-900 tabular-nums">{{ product.units }}</span>
                                     </td>
                                     <td class="px-4 sm:px-6 py-4 text-right">
-                                        <span class="text-sm font-bold text-zinc-900 tabular-nums">{{ '$' }}{{ formatPrice(product.revenue) }}</span>
+                                        <span class="text-sm font-bold text-neutral-900 tabular-nums">{{ '$' }}{{ formatPrice(product.revenue) }}</span>
                                     </td>
                                     <td class="px-4 sm:px-6 py-4 text-right">
                                         <div class="flex items-center justify-end gap-2">
-                                            <div class="w-24 bg-zinc-100 rounded-full h-2 overflow-hidden">
+                                            <div class="w-24 bg-neutral-100 rounded-full h-2 overflow-hidden">
                                                 <div :style="{
                                                     width: maxProductRevenue > 0
                                                         ? `${(product.sales / maxProductRevenue) * 100}%`
                                                         : '0%'
-                                                }" class="bg-zinc-900 h-full rounded-full transition-all duration-700 ease-out">
+                                                }" class="bg-neutral-900 h-full rounded-full transition-all duration-700 ease-out">
                                                 </div>
                                             </div>
-                                            <span class="text-xs font-semibold text-zinc-500 tabular-nums w-10 text-right">
+                                            <span class="text-xs font-semibold text-neutral-500 tabular-nums w-10 text-right">
                                                 {{ maxProductRevenue > 0 ? Math.round((product.sales / maxProductRevenue) * 100) : 0 }}%
                                             </span>
                                         </div>
@@ -701,18 +701,18 @@ onMounted(() => { fetchData(); });
                 </div>
 
                 <!-- ── Empty state (no data at all) ───────────────── -->
-                <div v-if="!dataAvailable && !loading && analyticsData" class="bg-white rounded-2xl p-10 sm:p-16 border border-zinc-100 text-center">
-                    <Sparkles class="w-16 h-16 text-zinc-200 mx-auto mb-4" />
+                <div v-if="!dataAvailable && !loading && analyticsData" class="card-flat p-10 sm:p-16 text-center">
+                    <Sparkles class="w-16 h-16 text-neutral-200 mx-auto mb-4" />
                     <div class="w-16 h-16 bg-neutral-100 rounded-full flex items-center justify-center mx-auto mb-4">
               <BarChart3 class="w-8 h-8 text-neutral-400" />
             </div>
             <h3 class="text-xl font-bold text-ink mb-2">No data available yet</h3>
-                    <p class="text-zinc-500 max-w-md mx-auto">
+                    <p class="text-neutral-500 max-w-md mx-auto">
                         Analytics data will appear as customers interact with your store.
                         Try switching the timeframe or add some products to get started.
                     </p>
                     <button @click="fetchData"
-                        class="mt-6 inline-flex items-center gap-2 px-5 py-2.5 bg-zinc-900 text-white text-sm font-semibold rounded-xl hover:bg-zinc-800 transition-colors">
+                        class="mt-6 inline-flex items-center gap-2 px-5 py-2.5 bg-neutral-900 text-white text-sm font-semibold rounded-xl hover:bg-neutral-800 transition-colors">
                         <RefreshCw class="w-4 h-4" />
                         Refresh
                     </button>

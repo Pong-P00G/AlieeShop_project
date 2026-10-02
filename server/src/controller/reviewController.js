@@ -34,7 +34,11 @@ export const submitReview = async (req, res) => {
 export const getProductReviews = async (req, res) => {
     try {
         const productId = req.params.id;
-        const result = await reviewService.getProductReviews(parseInt(productId));
+        const { rating, sort } = req.query;
+        const result = await reviewService.getProductReviews(parseInt(productId), {
+            rating: rating ? parseInt(rating) : null,
+            sort: sort || 'newest',
+        });
 
         res.json({
             success: true,
@@ -45,6 +49,48 @@ export const getProductReviews = async (req, res) => {
             success: false,
             message: error.message,
         });
+    }
+};
+
+// ── HELPFUL VOTES ───────────────────────────────────────────────────────────
+
+export const getMyHelpful = async (req, res) => {
+    try {
+        const { productId } = req.query;
+        const reviewIds = await reviewService.getUserHelpfulReviewIds(
+            req.user.id,
+            productId ? parseInt(productId) : null
+        );
+
+        res.json({ success: true, data: { review_ids: reviewIds } });
+    } catch (error) {
+        res.status(400).json({ success: false, message: error.message });
+    }
+};
+
+export const markHelpful = async (req, res) => {
+    try {
+        const result = await reviewService.markHelpful(
+            parseInt(req.params.reviewId),
+            req.user.id
+        );
+        res.json({ success: true, data: result });
+    } catch (error) {
+        const notFound = /not found/i.test(error.message);
+        res.status(notFound ? 404 : 400).json({ success: false, message: error.message });
+    }
+};
+
+export const unmarkHelpful = async (req, res) => {
+    try {
+        const result = await reviewService.unmarkHelpful(
+            parseInt(req.params.reviewId),
+            req.user.id
+        );
+        res.json({ success: true, data: result });
+    } catch (error) {
+        const notFound = /not found/i.test(error.message);
+        res.status(notFound ? 404 : 400).json({ success: false, message: error.message });
     }
 };
 
@@ -170,7 +216,8 @@ export const moderateReview = async (req, res) => {
         const review = await reviewService.moderateReview(
             parseInt(reviewId),
             status,
-            moderation_note || null
+            moderation_note || null,
+            req.user.id
         );
 
         res.json({
@@ -180,6 +227,49 @@ export const moderateReview = async (req, res) => {
         });
     } catch (error) {
         res.status(400).json({
+            success: false,
+            message: error.message,
+        });
+    }
+};
+
+// ── ADMIN: BULK MODERATE ────────────────────────────────────────────────────
+
+export const bulkModerateReviews = async (req, res) => {
+    try {
+        const { review_ids, status, moderation_note } = req.body;
+        const result = await reviewService.bulkModerate(
+            review_ids,
+            status,
+            moderation_note || null,
+            req.user.id
+        );
+
+        res.json({
+            success: true,
+            message: `${result.updated} review(s) ${status}`,
+            data: result,
+        });
+    } catch (error) {
+        res.status(400).json({
+            success: false,
+            message: error.message,
+        });
+    }
+};
+
+// ── ADMIN: EXPORT CSV ───────────────────────────────────────────────────────
+
+export const exportReviews = async (req, res) => {
+    try {
+        const { status } = req.query;
+        const csv = await reviewService.exportReviewsCsv(status || null);
+
+        res.setHeader('Content-Type', 'text/csv; charset=utf-8');
+        res.setHeader('Content-Disposition', 'attachment; filename="reviews.csv"');
+        res.send(csv);
+    } catch (error) {
+        res.status(500).json({
             success: false,
             message: error.message,
         });

@@ -890,6 +890,7 @@ const NOTIFICATION_TITLES = {
     user:    'New user',
     stock:   'Low stock alert',
     product: 'New product',
+    review:  'Review update',
     system:  'AlieeShop',
 };
 
@@ -1187,4 +1188,21 @@ export const notifyOrderStatusChange = async (orderId, userId, username, email, 
     } catch (err) {
         console.error('Failed to create order status notification:', err.message);
     }
+};
+
+/** Called when a review is approved or rejected — notifies its author. */
+export const notifyReviewModerated = async ({ userId, productName, status, moderationNote = null }) => {
+    if (!userId) return null;
+
+    const approved = status === 'approved';
+    const message = approved
+        ? `Your review of ${productName} was approved and is now live.`
+        : `Your review of ${productName} was not approved${moderationNote ? `: ${moderationNote}` : '.'}`;
+
+    return createNotification({
+        type: 'review',
+        message,
+        link: '/notifications',
+        userId,
+    });
 };

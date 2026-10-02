@@ -20,6 +20,7 @@ const REQUIRED_ENV_VARS = [
 ];
 
 export const PRODUCT_IMAGE_PREFIX = 'products';
+export const PROFILE_IMAGE_PREFIX = 'profile';
 
 // Extensions accepted as product images, mapped to their content type. Shared
 // by the upload controller and the migration script so the two cannot drift.
@@ -74,6 +75,17 @@ function getClient() {
  */
 export const publicUrlFor = (key) =>
     `${(process.env.R2_PUBLIC_BASE_URL || '').replace(/\/+$/, '')}/${key}`;
+
+/**
+ * Inverse of publicUrlFor: recover the object key from a stored public URL.
+ * Returns null when the URL does not belong to this bucket's public origin, so
+ * callers never try to delete an unrelated object.
+ */
+export const keyFromPublicUrl = (url) => {
+    const base = (process.env.R2_PUBLIC_BASE_URL || '').replace(/\/+$/, '');
+    if (!base || !url || !url.startsWith(`${base}/`)) return null;
+    return url.slice(base.length + 1);
+};
 
 /** Upload a buffer under `key` and return its public URL. */
 export const uploadObject = async ({ key, body, contentType }) => {

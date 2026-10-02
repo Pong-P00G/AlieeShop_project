@@ -170,6 +170,32 @@ body {
     animation: ripple 0.5s ease-out forwards;
   }
 
+  .btn-danger {
+    @apply inline-flex items-center justify-center gap-2 px-6 py-3
+           bg-danger text-white font-semibold text-sm
+           rounded-full
+           shadow-[0_8px_24px_-6px_rgb(220_38_38_/0.45)]
+           transition-all duration-200
+           hover:bg-danger/90 hover:-translate-y-0.5 hover:shadow-[0_12px_28px_-6px_rgb(220_38_38_/0.55)]
+           active:translate-y-0 active:bg-danger
+           focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-danger focus-visible:ring-offset-2
+           disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:translate-y-0
+           overflow-hidden isolate relative;
+  }
+  .btn-danger::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: radial-gradient(circle at 50% 50%, rgb(255 255 255 / 0.3) 0%, transparent 60%);
+    transform: scale(0) translateZ(0);
+    opacity: 1;
+    pointer-events: none;
+    border-radius: inherit;
+  }
+  .btn-danger:active::after {
+    animation: ripple 0.5s ease-out forwards;
+  }
+
   .btn-outline {
     @apply inline-flex items-center justify-center gap-2 px-6 py-3
            bg-paper text-ink font-semibold text-sm

@@ -99,6 +99,12 @@ export const updateUser = async (id, userData) => {
     return updated;
 };
 
+// Set the user's profile picture URL (null clears it). The upload itself is
+// handled by the controller, which owns the object storage interaction.
+export const updateProfilePicture = async (id, url) => {
+    return await UserModels.updateProfilePicture(id, url);
+};
+
 // Delete User
 export const deleteUser = async (id) => {
     return await UserModels.deleteUser(id);

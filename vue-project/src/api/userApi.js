@@ -33,6 +33,24 @@ export const userAPI = {
         return data.data ?? data;
     },
 
+    // Upload (or replace) the current user's profile picture.
+    // Returns the full response envelope: { success, message, data: user }.
+    // A longer timeout than the default since this streams a file body.
+    async uploadProfilePicture(file) {
+        const formData = new FormData();
+        formData.append('image', file);
+        const { data } = await api.post('/users/profile/picture', formData, {
+            timeout: 30000,
+        });
+        return data;
+    },
+
+    // Remove the current user's profile picture.
+    async deleteProfilePicture() {
+        const { data } = await api.delete('/users/profile/picture');
+        return data;
+    },
+
     // Delete user (Protected - requires auth)
     async deleteUser(id) {
         const { data } = await api.delete(`/users/${id}`);

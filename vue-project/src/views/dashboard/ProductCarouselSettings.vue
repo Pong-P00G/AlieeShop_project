@@ -918,11 +918,11 @@ onMounted(load);
                     </p>
                     <div class="flex gap-3">
                         <button @click="cancelDeleteTab"
-                            class="flex-1 px-5 py-3 rounded-xl font-bold text-sm text-neutral-600 hover:bg-neutral-100 transition-colors">
+                            class="btn-outline flex-1">
                             Cancel
                         </button>
                         <button @click="deleteTab"
-                            class="flex-1 px-5 py-3 bg-danger text-white rounded-xl font-bold text-sm hover:opacity-90 transition-all flex items-center justify-center gap-2">
+                            class="btn-danger flex-1 gap-2">
                             <Loader2 v-if="busyTabKey === pendingDeleteTab.key" class="w-4 h-4 animate-spin" />
                             Delete
                         </button>

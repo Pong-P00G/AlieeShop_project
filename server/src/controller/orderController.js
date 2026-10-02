@@ -1,4 +1,5 @@
 import * as orderService from '../services/orderService.js';
+import { toCsv } from '../utils/csv.js';
 
 // POST /api/orders
 export const createOrder = async (req, res) => {
@@ -30,6 +31,35 @@ export const getOrders = async (req, res) => {
             success: true,
             data: orders
         });
+    } catch (error) {
+        res.status(error.status || 500).json({
+            success: false,
+            message: error.message
+        });
+    }
+};
+
+// GET /api/orders/export
+// Admin-only CSV export of every order.
+export const exportOrders = async (req, res) => {
+    try {
+        const orders = await orderService.getAllOrders();
+
+        const csv = toCsv(orders, [
+            { label: 'Order ID', value: 'orderId' },
+            { label: 'Customer', value: 'username' },
+            { label: 'Email', value: 'email' },
+            { label: 'Status', value: 'status' },
+            { label: 'Total', value: 'totalAmount' },
+            { label: 'Items', value: 'itemCount' },
+            { label: 'Payment Method', value: 'paymentMethod' },
+            { label: 'Payment Status', value: 'paymentStatus' },
+            { label: 'Created At', value: (o) => (o.createdAt ? new Date(o.createdAt).toISOString() : '') },
+        ]);
+
+        res.setHeader('Content-Type', 'text/csv; charset=utf-8');
+        res.setHeader('Content-Disposition', 'attachment; filename="orders.csv"');
+        res.send(csv);
     } catch (error) {
         res.status(error.status || 500).json({
             success: false,

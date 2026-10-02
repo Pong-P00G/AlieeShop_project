@@ -823,7 +823,7 @@ const discountStatusStyle = (discount) => {
     const start = new Date(discount.start_date);
     const end = new Date(discount.end_date);
     if (now < start) return { label: 'Scheduled', cls: 'bg-blue-50 text-blue-700 border-blue-200' };
-    if (now > end) return { label: 'Expired', cls: 'bg-zinc-100 text-zinc-500 border-zinc-200' };
+    if (now > end) return { label: 'Expired', cls: 'bg-neutral-100 text-neutral-500 border-neutral-200' };
     return { label: 'Active', cls: 'bg-amber-50 text-amber-700 border-amber-200' };
 };
 
@@ -1131,7 +1131,7 @@ onMounted(() => {
 
                     <!-- Skeleton Stats -->
                     <div class="grid grid-cols-2 sm:grid-cols-4 gap-3 sm:gap-5 mb-8">
-                        <div v-for="i in 4" :key="'sk-stat-' + i" class="rounded-2xl border border-neutral-200 p-4 sm:p-5 space-y-3">
+                        <div v-for="i in 4" :key="'sk-stat-' + i" class="card-flat p-4 sm:p-5 space-y-3">
                             <div class="w-10 h-10 skeleton-shimmer rounded-xl"></div>
                             <div class="h-3 w-16 skeleton-shimmer rounded"></div>
                             <div class="h-7 w-20 skeleton-shimmer rounded"></div>
@@ -1139,7 +1139,7 @@ onMounted(() => {
                     </div>
 
                     <!-- Skeleton Filters -->
-                    <div class="rounded-2xl border border-neutral-200 p-4 sm:p-5 mb-8">
+                    <div class="card-flat p-4 sm:p-5 mb-8">
                         <div class="flex flex-col lg:flex-row gap-4">
                             <div class="flex-1 h-10 skeleton-shimmer rounded-xl"></div>
                             <div class="w-full lg:w-44 h-10 skeleton-shimmer rounded-xl"></div>
@@ -1149,7 +1149,7 @@ onMounted(() => {
                     </div>
 
                     <!-- Skeleton Table -->
-                    <div class="rounded-2xl border border-neutral-200 overflow-hidden">
+                    <div class="card-flat overflow-hidden">
                         <!-- Toolbar -->
                         <div class="px-4 sm:px-6 py-3 bg-neutral-50 border-b border-neutral-200">
                             <div class="flex items-center justify-between">
@@ -2174,7 +2174,7 @@ onMounted(() => {
                 </div>
 
                 <!-- Create/Edit Form -->
-                <div v-if="showDiscountForm" class="bg-zinc-50 rounded-2xl p-5 mb-5 border border-zinc-200">
+                <div v-if="showDiscountForm" class="bg-neutral-50 rounded-2xl p-5 mb-5 border border-neutral-200">
                     <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-4">
                         <div>
                             <label class="block text-xs font-bold uppercase tracking-[0.15em] text-ink mb-2">Product</label>
@@ -2210,27 +2210,27 @@ onMounted(() => {
                 <!-- Loading -->
                 <div v-if="loadingDiscounts" class="py-12 text-center">
                     <Loader2 class="w-8 h-8 text-amber-600 animate-spin mx-auto mb-3" />
-                    <p class="text-sm text-zinc-500">Loading discounts...</p>
+                    <p class="text-sm text-neutral-500">Loading discounts...</p>
                 </div>
 
                 <!-- Discount List -->
                 <div v-else-if="discounts.length === 0" class="py-12 text-center">
-                    <Tag class="w-12 h-12 text-zinc-300 mx-auto mb-3" />
-                    <p class="text-zinc-500 text-sm font-medium">No discounts configured</p>
-                    <p class="text-xs text-zinc-400 mt-1">Create a discount to start offering promotions.</p>
+                    <Tag class="w-12 h-12 text-neutral-300 mx-auto mb-3" />
+                    <p class="text-neutral-500 text-sm font-medium">No discounts configured</p>
+                    <p class="text-xs text-neutral-400 mt-1">Create a discount to start offering promotions.</p>
                 </div>
 
                 <div v-else class="space-y-2">
                     <div v-for="d in discounts" :key="d.discount_id"
-                        class="flex items-start gap-4 p-4 bg-zinc-50 rounded-xl hover:bg-zinc-100/50 transition-colors">
+                        class="flex items-start gap-4 p-4 bg-neutral-50 rounded-xl hover:bg-neutral-100/50 transition-colors">
                         <div class="flex-1 min-w-0">
                             <div class="flex items-center gap-2 mb-1.5">
-                                <span class="font-semibold text-sm text-zinc-900">{{ d.product_name }}</span>
+                                <span class="font-semibold text-sm text-neutral-900">{{ d.product_name }}</span>
                                 <span :class="['px-2 py-0.5 rounded-full text-[10px] font-bold border', discountStatusStyle(d).cls]">
                                     {{ discountStatusStyle(d).label }}
                                 </span>
                             </div>
-                            <div class="flex items-center gap-4 text-xs text-zinc-500">
+                            <div class="flex items-center gap-4 text-xs text-neutral-500">
                                 <span class="font-bold text-amber-600 text-sm">${{ formatPrice(d.discount_amount) }}</span>
                                 <span class="flex items-center gap-1">
                                     <Calendar class="w-3 h-3" />
@@ -2239,10 +2239,10 @@ onMounted(() => {
                             </div>
                         </div>
                         <div class="flex items-center gap-1 shrink-0">
-                            <button @click="openDiscountForm(d)" class="p-2 rounded-lg text-zinc-400 hover:text-zinc-700 hover:bg-zinc-200 transition-all" title="Edit">
+                            <button @click="openDiscountForm(d)" class="p-2 rounded-lg text-neutral-400 hover:text-neutral-700 hover:bg-neutral-200 transition-all" title="Edit">
                                 <Pencil class="w-4 h-4" />
                             </button>
-                            <button @click="confirmDeleteDiscount(d)" class="p-2 rounded-lg text-zinc-400 hover:text-red-600 hover:bg-red-50 transition-all" title="Delete">
+                            <button @click="confirmDeleteDiscount(d)" class="p-2 rounded-lg text-neutral-400 hover:text-danger hover:bg-danger/10 transition-all" title="Delete">
                                 <Trash2 class="w-4 h-4" />
                             </button>
                         </div>
@@ -2258,16 +2258,16 @@ onMounted(() => {
             class="fixed inset-0 bg-ink/60 backdrop-blur-sm z-50 flex items-center justify-center p-4"
         >
             <div @click.stop class="card-flat p-6 max-w-sm w-full text-center animate-[scale-in_0.25s_ease-out]">
-                <div class="w-14 h-14 bg-red-50 rounded-full flex items-center justify-center mx-auto mb-4">
-                    <AlertTriangle class="w-7 h-7 text-red-500" />
+                <div class="w-14 h-14 bg-danger/10 rounded-full flex items-center justify-center mx-auto mb-4">
+                    <AlertTriangle class="w-7 h-7 text-danger" />
                 </div>
-                <h3 class="text-lg font-bold text-zinc-900 mb-2">Delete Discount</h3>
-                <p class="text-sm text-zinc-600 mb-6">
-                    Delete discount for <strong class="text-zinc-900">{{ deletingDiscount?.product_name }}</strong>?
+                <h3 class="text-lg font-bold text-neutral-900 mb-2">Delete Discount</h3>
+                <p class="text-sm text-neutral-600 mb-6">
+                    Delete discount for <strong class="text-neutral-900">{{ deletingDiscount?.product_name }}</strong>?
                 </p>
                 <div class="flex gap-3">
                     <button @click="cancelDeleteDiscount" class="btn-outline flex-1" :disabled="deletingDiscountLoading">Cancel</button>
-                    <button @click="executeDeleteDiscount" :disabled="deletingDiscountLoading" class="px-4 py-3 bg-red-600 text-white rounded-xl text-sm font-semibold hover:bg-red-700 transition-colors disabled:opacity-50 flex-1 inline-flex items-center justify-center gap-2">
+                    <button @click="executeDeleteDiscount" :disabled="deletingDiscountLoading" class="btn-danger flex-1 gap-2">
                         <Loader2 v-if="deletingDiscountLoading" class="w-4 h-4 animate-spin" />
                         {{ deletingDiscountLoading ? 'Deleting...' : 'Delete' }}
                     </button>

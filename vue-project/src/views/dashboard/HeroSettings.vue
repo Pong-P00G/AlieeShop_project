@@ -779,12 +779,11 @@ onMounted(load);
                     </div>
                     <div class="flex items-center justify-end gap-3 mt-6">
                         <button @click="cancelDelete" :disabled="deleting"
-                            class="px-5 py-2.5 rounded-xl font-bold text-sm text-neutral-600 hover:bg-neutral-100 transition-colors">
+                            class="btn-outline text-sm">
                             Cancel
                         </button>
                         <button @click="confirmDelete" :disabled="deleting"
-                            class="px-5 py-2.5 bg-danger text-white rounded-xl font-bold text-sm
-                                   hover:opacity-90 disabled:opacity-40 transition-all flex items-center gap-2">
+                            class="btn-danger text-sm gap-2">
                             <Loader2 v-if="deleting" class="w-4 h-4 animate-spin" />
                             <Trash2 v-else class="w-4 h-4" />
                             {{ deleting ? 'Deleting...' : 'Delete' }}

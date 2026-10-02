@@ -35,12 +35,17 @@ export const validateRegister = (req, res, next) => {
                 'string.min': 'Last name must be at least 2 characters',
                 'any.required': 'Last name is required'
             }),
+        // Public registration always creates a customer (role 3). Clients may
+        // send role_id, but it is stripped here rather than rejected or honoured
+        // so a user can never self-assign a privileged role.
+        role_id: Joi.any().strip()
     });
 
-    const { error } = schema.validate(req.body);
+    const { error, value } = schema.validate(req.body);
     if (error) {
         return res.status(400).json({ message: error.details[0].message });
     }
+    req.body = value;
     next();
 };
 

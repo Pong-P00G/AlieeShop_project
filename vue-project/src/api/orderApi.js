@@ -23,5 +23,11 @@ export const orderAPI = {
     async updateOrderStatus(orderId, status) {
         const { data } = await api.put(`/orders/${orderId}/status`, { status });
         return data;
+    },
+
+    // Download all orders as a CSV blob (Admin only)
+    async exportOrdersCsv() {
+        const { data } = await api.get('/orders/export', { responseType: 'blob' });
+        return data;
     }
 };

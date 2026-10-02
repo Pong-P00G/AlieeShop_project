@@ -27,8 +27,8 @@ const formData = ref({
   mid_name: '',
   last_name: '',
   email: '',
-  password: '',
-  role_id: 3 // Default to customer role (schema: 3 = user)
+  password: ''
+  // role_id is assigned server-side (always customer/role 3) and must not be sent
 });
 
 const confirmPassword = ref('');

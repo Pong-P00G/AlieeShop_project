@@ -9,6 +9,7 @@ const USER_SELECT = `
         u.lastname     AS last_name,
         u.fullname     AS full_name,
         u.email,
+        u.profilepictureurl AS profile_picture_url,
         u.passwordhash AS password_hash,
         u.isactive     AS is_active,
         u.createdat    AS created_at,
@@ -104,6 +105,15 @@ export const updateUsers = async (id, userData) => {
 export const deleteUser = async (id) => {
     const result = await db.query('DELETE FROM users WHERE usersid = $1', [id]);
     return result.rowCount > 0;
+};
+
+// Set (or clear, with url = null) the user's profile picture URL.
+export const updateProfilePicture = async (id, url) => {
+    await db.query(
+        'UPDATE users SET profilepictureurl = $1, updatedat = NOW() WHERE usersid = $2',
+        [url, id]
+    );
+    return getUserById(id);
 };
 
 export const emailExists = async (email) => {

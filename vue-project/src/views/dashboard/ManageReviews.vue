@@ -14,6 +14,8 @@ import {
     Clock,
     Filter,
     Trash2,
+    Download,
+    BadgeCheck,
 } from 'lucide-vue-next';
 
 const toast = useToast();
@@ -27,6 +29,8 @@ const totalItems = ref(0);
 const totalPages = ref(0);
 const statusFilter = ref('pending');
 const actingReviewId = ref(null);
+const selectedIds = ref(new Set());
+const bulkBusy = ref(false);
 
 const paginationStart = computed(() => ((currentPage.value - 1) * pageSize) + 1);
 const paginationEnd = computed(() => Math.min(currentPage.value * pageSize, totalItems.value));
@@ -42,6 +46,7 @@ const fetchReviews = async () => {
     try {
         loading.value = true;
         error.value = null;
+        selectedIds.value = new Set();
 
         if (statusFilter.value === 'pending') {
             const res = await reviewAPI.getPendingReviews(currentPage.value, pageSize);
@@ -120,6 +125,72 @@ const switchTab = (tab) => {
     fetchReviews();
 };
 
+// ── Bulk selection ──────────────────────────────────────────────────────────
+
+const selectedCount = computed(() => selectedIds.value.size);
+
+const allOnPageSelected = computed(() =>
+    reviews.value.length > 0 && reviews.value.every((r) => selectedIds.value.has(r.review_id))
+);
+
+const toggleSelect = (reviewId) => {
+    const next = new Set(selectedIds.value);
+    if (next.has(reviewId)) next.delete(reviewId);
+    else next.add(reviewId);
+    selectedIds.value = next;
+};
+
+const toggleSelectAll = () => {
+    const next = new Set(selectedIds.value);
+    if (allOnPageSelected.value) {
+        reviews.value.forEach((r) => next.delete(r.review_id));
+    } else {
+        reviews.value.forEach((r) => next.add(r.review_id));
+    }
+    selectedIds.value = next;
+};
+
+const clearSelection = () => {
+    selectedIds.value = new Set();
+};
+
+const bulkModerate = async (status) => {
+    if (selectedIds.value.size === 0) return;
+    bulkBusy.value = true;
+    try {
+        const res = await reviewAPI.bulkModerate([...selectedIds.value], { status });
+        if (res.success) {
+            toast.success(res.message || `Reviews ${status}`);
+            await fetchReviews();
+        } else {
+            toast.error(res.message || 'Bulk moderation failed');
+        }
+    } catch (err) {
+        console.error('Bulk moderation error:', err);
+        toast.error(err.response?.data?.message || 'Bulk moderation failed');
+    } finally {
+        bulkBusy.value = false;
+    }
+};
+
+const exportCsv = async () => {
+    try {
+        const blob = await reviewAPI.exportReviewsCsv(statusFilter.value);
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `reviews-${statusFilter.value}.csv`;
+        document.body.appendChild(a);
+        a.click();
+        a.remove();
+        URL.revokeObjectURL(url);
+        toast.success('Export started');
+    } catch (err) {
+        console.error('Export error:', err);
+        toast.error('Failed to export reviews');
+    }
+};
+
 const goToPage = (page) => {
     currentPage.value = page;
     fetchReviews();
@@ -175,13 +246,19 @@ onMounted(() => {
     <div class="min-h-screen bg-neutral-100">
         <div class="section py-6 sm:py-8">
             <!-- Header -->
-            <div class="mb-8">
-                <span class="inline-flex items-center gap-2 text-xs font-bold uppercase tracking-[0.2em] text-accent mb-2">
-                    <MessageSquare class="w-3.5 h-3.5" />
-                    Reviews
-                </span>
-                <h1 class="text-2xl sm:text-3xl font-bold text-ink">Review Moderation</h1>
-                <p class="text-neutral-500 mt-1 text-sm">Approve, reject, and manage product reviews</p>
+            <div class="mb-8 flex items-start justify-between gap-4 flex-wrap">
+                <div>
+                    <span class="inline-flex items-center gap-2 text-xs font-bold uppercase tracking-[0.2em] text-accent mb-2">
+                        <MessageSquare class="w-3.5 h-3.5" />
+                        Reviews
+                    </span>
+                    <h1 class="text-2xl sm:text-3xl font-bold text-ink">Review Moderation</h1>
+                    <p class="text-neutral-500 mt-1 text-sm">Approve, reject, and manage product reviews</p>
+                </div>
+                <button @click="exportCsv" class="btn-outline text-sm gap-1.5">
+                    <Download class="w-4 h-4" />
+                    Export CSV
+                </button>
             </div>
 
             <!-- Status Tabs -->
@@ -200,6 +277,47 @@ onMounted(() => {
                     <component :is="tab.icon" class="w-4 h-4" />
                     {{ tab.label }}
                 </button>
+            </div>
+
+            <!-- Bulk actions -->
+            <div class="flex items-center gap-3 mb-6 flex-wrap">
+                <label class="inline-flex items-center gap-2 text-sm font-semibold text-neutral-600 cursor-pointer select-none">
+                    <input
+                        type="checkbox"
+                        class="w-4 h-4 rounded border-neutral-300 text-accent focus:ring-accent cursor-pointer"
+                        :checked="allOnPageSelected"
+                        @change="toggleSelectAll"
+                        aria-label="Select all reviews on this page"
+                    />
+                    Select all
+                </label>
+
+                <div v-if="selectedCount > 0" class="flex items-center gap-2 ml-auto flex-wrap">
+                    <span class="text-sm font-bold text-ink">{{ selectedCount }} selected</span>
+                    <button
+                        @click="bulkModerate('approved')"
+                        :disabled="bulkBusy"
+                        class="inline-flex items-center gap-1.5 px-4 py-2 bg-emerald-50 text-emerald-700 rounded-xl text-xs font-bold hover:bg-emerald-100 transition-colors disabled:opacity-50"
+                    >
+                        <CheckCircle class="w-4 h-4" />
+                        Approve selected
+                    </button>
+                    <button
+                        @click="bulkModerate('rejected')"
+                        :disabled="bulkBusy"
+                        class="inline-flex items-center gap-1.5 px-4 py-2 bg-danger/10 text-danger rounded-xl text-xs font-bold hover:bg-danger/20 transition-colors disabled:opacity-50"
+                    >
+                        <XCircle class="w-4 h-4" />
+                        Reject selected
+                    </button>
+                    <button
+                        @click="clearSelection"
+                        class="px-4 py-2 bg-neutral-200 text-neutral-700 rounded-xl text-xs font-bold hover:bg-neutral-300 transition-colors"
+                    >
+                        Clear
+                    </button>
+                    <Loader2 v-if="bulkBusy" class="w-4 h-4 animate-spin text-accent" />
+                </div>
             </div>
 
             <!-- Error State -->
@@ -276,6 +394,14 @@ onMounted(() => {
                     :class="{ 'border-l-4 border-l-amber-500': review.status === 'pending' }"
                 >
                     <div class="flex items-start gap-4">
+                        <!-- Selection -->
+                        <input
+                            type="checkbox"
+                            class="mt-1 w-4 h-4 rounded border-neutral-300 text-accent focus:ring-accent cursor-pointer shrink-0"
+                            :checked="selectedIds.has(review.review_id)"
+                            @change="toggleSelect(review.review_id)"
+                            :aria-label="`Select review by ${review.username}`"
+                        />
                         <!-- Avatar -->
                         <div class="w-10 h-10 rounded-full bg-neutral-100 text-neutral-600 flex items-center justify-center font-bold text-sm shrink-0">
                             {{ (review.username || '?').charAt(0).toUpperCase() }}
@@ -290,8 +416,15 @@ onMounted(() => {
                                         <span class="text-xs text-neutral-400">|</span>
                                         <span class="text-xs text-neutral-500">{{ formatDate(review.created_at) }}</span>
                                     </div>
-                                    <p class="text-xs text-neutral-500 mt-1">
+                                    <p class="text-xs text-neutral-500 mt-1 flex items-center gap-2 flex-wrap">
                                         on <span class="font-semibold text-ink">{{ review.product_name || 'Product #' + review.product_id }}</span>
+                                        <span
+                                            v-if="review.verified_purchase"
+                                            class="inline-flex items-center gap-1 px-2 py-0.5 bg-emerald-50 text-emerald-700 rounded-full text-[10px] font-bold uppercase tracking-wide"
+                                        >
+                                            <BadgeCheck class="w-3 h-3" />
+                                            Verified
+                                        </span>
                                     </p>
                                 </div>
                                 <span v-if="review.status !== 'pending'"
@@ -299,20 +432,26 @@ onMounted(() => {
                                         'px-2.5 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider shrink-0',
                                         review.status === 'approved'
                                             ? 'bg-emerald-50 text-emerald-700'
-                                            : 'bg-red-50 text-red-700'
+                                            : 'bg-danger/10 text-danger'
                                     ]"
                                 >
                                     {{ review.status }}
                                 </span>
                             </div>
 
-                            <!-- Stars -->
-                            <div class="flex items-center gap-0.5">
-                                <Star
-                                    v-for="(filled, i) in renderStars(review.rating)"
-                                    :key="i"
-                                    :class="['w-4 h-4', filled ? 'fill-amber-400 text-amber-400' : 'fill-neutral-200 text-neutral-200']"
-                                />
+                            <!-- Stars + helpful votes -->
+                            <div class="flex items-center gap-3">
+                                <div class="flex items-center gap-0.5">
+                                    <Star
+                                        v-for="(filled, i) in renderStars(review.rating)"
+                                        :key="i"
+                                        :class="['w-4 h-4', filled ? 'fill-amber-400 text-amber-400' : 'fill-neutral-200 text-neutral-200']"
+                                    />
+                                </div>
+                                <span v-if="review.helpful_count" class="text-xs text-neutral-500 inline-flex items-center gap-1">
+                                    <ThumbsUp class="w-3 h-3" />
+                                    {{ review.helpful_count }} helpful
+                                </span>
                             </div>
 
                             <p v-if="review.title" class="font-semibold text-sm text-ink">{{ review.title }}</p>
@@ -333,7 +472,7 @@ onMounted(() => {
                                 </button>
                                 <button
                                     @click="openNoteInput(review.review_id)"
-                                    class="inline-flex items-center gap-1.5 px-4 py-2 bg-red-50 text-red-700 rounded-xl text-xs font-bold hover:bg-red-100 transition-colors"
+                                    class="inline-flex items-center gap-1.5 px-4 py-2 bg-danger/10 text-danger rounded-xl text-xs font-bold hover:bg-danger/20 transition-colors"
                                 >
                                     <XCircle class="w-4 h-4" />
                                     Reject
@@ -341,7 +480,7 @@ onMounted(() => {
                                 <button
                                     @click="deleteReview(review.review_id)"
                                     :disabled="actingReviewId === review.review_id"
-                                    class="inline-flex items-center gap-1.5 px-4 py-2 bg-neutral-100 text-neutral-600 rounded-xl text-xs font-bold hover:bg-red-50 hover:text-red-600 transition-colors disabled:opacity-50"
+                                    class="inline-flex items-center gap-1.5 px-4 py-2 bg-neutral-100 text-neutral-600 rounded-xl text-xs font-bold hover:bg-danger/10 hover:text-danger transition-colors disabled:opacity-50"
                                 >
                                     <Trash2 class="w-4 h-4" />
                                     Delete
@@ -354,7 +493,7 @@ onMounted(() => {
                                 <button
                                     @click="deleteReview(review.review_id)"
                                     :disabled="actingReviewId === review.review_id"
-                                    class="inline-flex items-center gap-1.5 px-4 py-2 bg-neutral-100 text-neutral-600 rounded-xl text-xs font-bold hover:bg-red-50 hover:text-red-600 transition-colors disabled:opacity-50"
+                                    class="inline-flex items-center gap-1.5 px-4 py-2 bg-neutral-100 text-neutral-600 rounded-xl text-xs font-bold hover:bg-danger/10 hover:text-danger transition-colors disabled:opacity-50"
                                 >
                                     <Trash2 class="w-4 h-4" />
                                     Delete
@@ -374,7 +513,7 @@ onMounted(() => {
                                     <button
                                         @click="submitWithNote(review.review_id, 'rejected')"
                                         :disabled="actingReviewId === review.review_id"
-                                        class="px-3 py-1.5 bg-red-600 text-paper rounded-lg text-xs font-bold hover:bg-red-700 transition-colors disabled:opacity-50"
+                                        class="px-3 py-1.5 bg-danger text-paper rounded-lg text-xs font-bold hover:bg-danger/90 transition-colors disabled:opacity-50"
                                     >
                                         Reject with note
                                     </button>

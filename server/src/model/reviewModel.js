@@ -16,7 +16,16 @@ const REVIEW_COLS = `
     r.status,
     r.moderationnote AS moderation_note,
     r.createdat     AS created_at,
-    r.updatedat     AS updated_at
+    r.updatedat     AS updated_at,
+    (SELECT COUNT(*)::int FROM review_helpful rh WHERE rh.reviewsid = r.reviewsid) AS helpful_count,
+    EXISTS (
+        SELECT 1
+        FROM orderitems oi
+        JOIN orders o ON oi.ordersid = o.ordersid
+        WHERE o.usersid = r.usersid
+          AND oi.productsid = r.productsid
+          AND o.status <> 'cancelled'
+    ) AS verified_purchase
 `;
 
 // ── CREATE ──────────────────────────────────────────────────────────────────
@@ -33,14 +42,33 @@ export const createReview = async ({ product_id, user_id, rating, title, comment
 
 // ── READ ────────────────────────────────────────────────────────────────────
 
-export const getReviewsByProduct = async (productId, status = 'approved') => {
+const REVIEW_SORTS = {
+    newest:  'r.createdat DESC',
+    oldest:  'r.createdat ASC',
+    highest: 'r.rating DESC, r.createdat DESC',
+    lowest:  'r.rating ASC, r.createdat DESC',
+    helpful: 'helpful_count DESC, r.createdat DESC',
+};
+
+export const getReviewsByProduct = async (productId, status = 'approved', options = {}) => {
+    const { rating = null, sort = 'newest' } = options;
+    const params = [productId, status];
+    let where = 'r.productsid = $1 AND r.status = $2';
+
+    if (rating) {
+        params.push(rating);
+        where += ` AND r.rating = $${params.length}`;
+    }
+
+    const orderBy = REVIEW_SORTS[sort] || REVIEW_SORTS.newest;
+
     const { rows } = await db.query(
         `SELECT ${REVIEW_COLS}
          FROM reviews r
          JOIN users u ON r.usersid = u.usersid
-         WHERE r.productsid = $1 AND r.status = $2
-         ORDER BY r.createdat DESC`,
-        [productId, status]
+         WHERE ${where}
+         ORDER BY ${orderBy}`,
+        params
     );
     return rows;
 };
@@ -176,6 +204,93 @@ export const deleteReview = async (reviewId) => {
     return result.rowCount > 0;
 };
 
+// ── BULK MODERATION ─────────────────────────────────────────────────────────
+
+export const getReviewsByIds = async (reviewIds = []) => {
+    if (!reviewIds.length) return [];
+    const { rows } = await db.query(
+        `SELECT ${REVIEW_COLS},
+                p.productname AS product_name
+         FROM reviews r
+         JOIN users u   ON r.usersid    = u.usersid
+         JOIN products p ON r.productsid = p.productsid
+         WHERE r.reviewsid = ANY($1::int[])`,
+        [reviewIds]
+    );
+    return rows;
+};
+
+export const bulkModerate = async (reviewIds = [], status, moderationNote = null) => {
+    if (!reviewIds.length) return 0;
+    const result = await db.query(
+        `UPDATE reviews
+         SET status = $1, moderationnote = $2, updatedat = NOW()
+         WHERE reviewsid = ANY($3::int[])`,
+        [status, moderationNote, reviewIds]
+    );
+    return result.rowCount;
+};
+
+// ── EXPORT ──────────────────────────────────────────────────────────────────
+
+export const getReviewsForExport = async (statusFilter = null) => {
+    const conditions = [];
+    const params = [];
+
+    if (statusFilter && statusFilter !== 'all') {
+        const p = addParam(params, statusFilter);
+        conditions.push(`r.status = ${p}`);
+    }
+
+    const where = conditions.length ? `WHERE ${conditions.join(' AND ')}` : '';
+
+    const { rows } = await db.query(
+        `SELECT ${REVIEW_COLS},
+                p.productname AS product_name
+         FROM reviews r
+         JOIN users u   ON r.usersid    = u.usersid
+         JOIN products p ON r.productsid = p.productsid
+         ${where}
+         ORDER BY r.createdat DESC`,
+        params
+    );
+    return rows;
+};
+
+// ── HELPFUL VOTES ───────────────────────────────────────────────────────────
+
+// Returns true when a new vote was recorded, false when the user had already
+// voted (the INSERT is a no-op thanks to the unique constraint).
+export const markHelpful = async (reviewId, userId) => {
+    const result = await db.query(
+        `INSERT INTO review_helpful (reviewsid, usersid)
+         VALUES ($1, $2)
+         ON CONFLICT (reviewsid, usersid) DO NOTHING`,
+        [reviewId, userId]
+    );
+    return result.rowCount > 0;
+};
+
+export const unmarkHelpful = async (reviewId, userId) => {
+    const result = await db.query(
+        `DELETE FROM review_helpful WHERE reviewsid = $1 AND usersid = $2`,
+        [reviewId, userId]
+    );
+    return result.rowCount > 0;
+};
+
+// Which of a product's reviews the user has already voted helpful.
+export const getUserHelpfulReviewIds = async (userId, productId) => {
+    const { rows } = await db.query(
+        `SELECT rh.reviewsid AS review_id
+         FROM review_helpful rh
+         JOIN reviews r ON rh.reviewsid = r.reviewsid
+         WHERE rh.usersid = $1 AND r.productsid = $2`,
+        [userId, productId]
+    );
+    return rows.map((r) => r.review_id);
+};
+
 // ── HELPER: check if user already reviewed a product ─────────────────────────
 
 export const userHasReviewed = async (productId, userId) => {
@@ -214,4 +329,17 @@ export const ensureTable = async () => {
 
     await db.query(`CREATE INDEX IF NOT EXISTS idx_reviews_product ON reviews(productsId)`);
     await db.query(`CREATE INDEX IF NOT EXISTS idx_reviews_status ON reviews(status)`);
+
+    await db.query(`CREATE TABLE IF NOT EXISTS review_helpful (
+        helpfulId  INTEGER       GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+        reviewsId  INTEGER       NOT NULL,
+        usersId    INTEGER       NOT NULL,
+        createdAt  TIMESTAMPTZ   DEFAULT NOW(),
+        FOREIGN KEY (reviewsId) REFERENCES reviews(reviewsId) ON DELETE CASCADE,
+        FOREIGN KEY (usersId)   REFERENCES users(usersId)     ON DELETE CASCADE,
+        CONSTRAINT review_helpful_unique UNIQUE (reviewsId, usersId)
+    )`);
+
+    await db.query(`CREATE INDEX IF NOT EXISTS idx_review_helpful_review ON review_helpful(reviewsId)`);
+    await db.query(`CREATE INDEX IF NOT EXISTS idx_review_helpful_user ON review_helpful(usersId)`);
 };

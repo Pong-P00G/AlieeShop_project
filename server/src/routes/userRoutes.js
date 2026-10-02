@@ -10,6 +10,10 @@ const router = express.Router();
 // NOTE: /profile must be declared BEFORE /:id or it would be swallowed by it.
 router.put('/profile', protect, validateUpdate, userController.updateProfile);
 
+// Profile picture: self-service upload/remove (multipart field: image)
+router.post('/profile/picture', protect, userController.uploadProfilePicture);
+router.delete('/profile/picture', protect, userController.deleteProfilePicture);
+
 // ── Admin only ───────────────────────────────────────────────────────────────
 router.get('/', protect, isAdmin, userController.getAllUsers);
 router.post('/', protect, isAdmin, userController.createUsers);
