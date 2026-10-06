@@ -25,13 +25,26 @@ const isEditing = ref(false);
 const isSaving = ref(false);
 const isSaved = ref(false);
 
+const joinedDate = computed(() => {
+    if (!authStore.user?.created_at) return '';
+    return new Date(authStore.user.created_at).toLocaleDateString('en-US', { year: 'numeric' });
+});
+
+const bioRandom = [
+    'Lover of design, slow fashion, and great coffee.',
+    'Passionate about sustainability and ethical shopping.',
+    'Avid traveler and culture enthusiast.',
+    'Tech geek with a love for gadgets and innovation.',
+    'Foodie exploring the world one dish at a time.',
+];
+
 const profile = ref({
     name: authStore.user?.username || 'Guest User',
     email: authStore.user?.email || 'user@aleeshop.com',
-    phone: '+1 (555) 123-4567',
+    phone: '+884 123-4567',
     location: 'Phnom Penh, Cambodia',
-    bio: 'Lover of design, slow fashion, and great coffee.',
-    joined: '2024',
+    bio: bioRandom[Math.floor(Math.random() * bioRandom.length)],
+    joined: joinedDate.value,
 });
 
 // Orders state 
@@ -141,11 +154,6 @@ const save = async () => {
         const joinedDate = authStore.user?.created_at
             ? new Date(authStore.user.created_at).toLocaleDateString('en-US', { year: 'numeric' })
             : String(now.getFullYear());
-
-        // Map the on-screen "Full name" field into first/last name so the backend
-        // validation (whose schema requires both) is never hit with an empty value.
-        // Phone / location / bio are client-side display preferences the API has no
-        // column for, so they stay local and are not shipped up.
         const full = (profile.value.name || '').trim();
         const first = full.split(/\s+/)[0];
         const last = profile.value.name
@@ -236,6 +244,8 @@ const onAvatarSelected = async (event) => {
         toast.error('Please choose an image file');
         return;
     }
+    // Matches MAX_PROFILE_PICTURE_SIZE on the server, so an oversized file is
+    // rejected with a clear message instead of a generic multer error.
     if (file.size > 5 * 1024 * 1024) {
         toast.error('Image must be 5MB or smaller');
         return;
@@ -310,7 +320,7 @@ onMounted(() => {
         <section class="relative bg-ink text-paper overflow-hidden">
             <!-- subtle grid texture -->
             <div class="absolute inset-0 opacity-[0.04]"
-                 style="background-image: linear-gradient(#fff 1px,transparent 1px),linear-gradient(90deg,#fff 1px,transparent 1px); background-size: 40px 40px;"></div>
+                style="background-image: linear-gradient(#fff 1px,transparent 1px),linear-gradient(90deg,#fff 1px,transparent 1px); background-size: 40px 40px;"></div>
             <!-- orange glow bottom-right -->
             <div class="absolute -bottom-20 -right-20 w-80 h-80 rounded-full bg-accent/20 blur-3xl pointer-events-none"></div>
 
@@ -319,7 +329,7 @@ onMounted(() => {
 
                     <!-- Avatar -->
                     <div class="relative shrink-0">
-                        <div class="w-24 h-24 md:w-28 md:h-28 rounded-2xl bg-linear-to-br from-accent-400 to-accent-700 flex items-center justify-center text-3xl font-elegant font-bold text-white shadow-2xl ring-4 ring-white/10 overflow-hidden">
+                        <div class="w-24 h-24 md:w-28 md:h-28 rounded-full bg-linear-to-br from-accent-400 to-accent-700 flex items-center justify-center text-3xl font-elegant font-bold text-white shadow-2xl ring-4 ring-white/10 overflow-hidden">
                             <img v-if="avatarUrl" :src="avatarUrl" :alt="profile.name" class="w-full h-full object-cover" />
                             <span v-else>{{ initials }}</span>
                         </div>

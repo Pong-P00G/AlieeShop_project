@@ -4,9 +4,12 @@ const api = axios.create({
     baseURL: import.meta.env.VITE_API_BASE_URL || '/api',
     timeout: 10000,
     withCredentials: true, // Send httpOnly cookie with every request
-    headers: {
-        "Content-Type": "application/json"
-    },
+    // NOTE: no instance-wide Content-Type here. A global `application/json`
+    // made axios JSON-serialise any FormData body (the product, hero and
+    // profile uploads), so the server received a JSON string instead of a file
+    // and nothing ever reached the CDN. Axios already sets application/json for
+    // plain objects and multipart/form-data (with the boundary) for FormData,
+    // so leaving it unset lets each request pick the right encoding.
 });
 
 // ── CSRF Protection ──────────────────────────────────────────────────────────
