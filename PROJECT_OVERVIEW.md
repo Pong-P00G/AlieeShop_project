@@ -16,7 +16,6 @@ start reading the code.
 ## Table of Contents
 
 - [What AlieeShop Is](#what-alieeshop-is)
-- [CV / Résumé Highlights](#cv--résumé-highlights)
 - [Feature Map](#feature-map)
 - [System Architecture](#system-architecture)
 - [Anatomy of a Request](#anatomy-of-a-request)
