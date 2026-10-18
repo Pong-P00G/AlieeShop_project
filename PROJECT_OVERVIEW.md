@@ -16,7 +16,6 @@ start reading the code.
 ## Table of Contents
 
 - [What AlieeShop Is](#what-alieeshop-is)
-- [CV / Résumé Highlights](#cv--résumé-highlights)
 - [Feature Map](#feature-map)
 - [System Architecture](#system-architecture)
 - [Anatomy of a Request](#anatomy-of-a-request)
@@ -51,68 +50,6 @@ start reading the code.
 | Tests | Vitest + Testing Library | Vitest + Supertest |
 
 ---
-
-## CV / Résumé Highlights
-
-A copy-ready project entry for a CV, résumé, or portfolio page, followed by a
-map from each claim to the section of this document that backs it up. If a
-recruiter asks about any line, the evidence is one link away.
-
-### Copy-Paste Entry
-
-```text
-Project
------------------------------------------------
-E-Commerce Web Application : Aliee Shop
------------------------------------------------
-- Architected a full-stack e-commerce platform with a clean client/server
-  split — a Vue 3 SPA in vue-project/ and a REST API in server/ — serving a
-  customer storefront and a staff admin dashboard from one codebase.
-
-- Structured the backend in four layers (routes → controllers → services →
-  models) plus middleware for auth, validation, and CSRF, keeping all SQL
-  inside models and business rules inside services.
-
-- Configured PostgreSQL 18 with a shared connection pool and an 18-table
-  schema evolved through an ordered, tracked SQL migration runner, plus a
-  one-command setup script that creates, migrates, and seeds a fresh database.
-
-- Built secure REST APIs with Express 5 across 16 resources (auth, products,
-  orders, payments, wishlist, notifications, …).
-
-- Implemented JWT authentication in httpOnly cookies with single-use,
-  SHA-256-hashed refresh tokens that rotate on every refresh — reuse is treated
-  as theft and revokes every session for that user.
-
-- Hardened the API with Helmet security headers, three tiers of rate limiting,
-  CSRF protection, CORS origin checks, and Joi request validation.
-
-- Implemented admin/user role management, enforcing authorization at both the
-  route level (isAdmin) and the row level (owner-or-admin checks keyed on
-  user_id / role_id).
-
-- Developed a built-in admin dashboard with Chart.js analytics, reports, and an
-  audit activity log, for managing products, categories, variants, stock,
-  discounts, orders, users, store settings, and the storefront hero carousel.
-
-- Built the checkout flow end to end — persisted cart drawer, multi-step
-  checkout, shipping method selection, configurable payments including cash on
-  delivery with an optional fee, and PDF receipt generation.
-
-- Built a fully responsive storefront with Vue 3, Pinia, Vue Router, and
-  Tailwind CSS v4, using reusable components, two layouts, and route guards for
-  protected pages.
-
-- Shipped SEO and PWA features: per-route meta and Open Graph tags, canonical
-  URLs, a dynamic /sitemap.xml and /robots.txt generated from live product data,
-  and web push notifications.
-
-- Wrote 629 automated tests (197 frontend, 256 backend unit, 176 backend
-  integration) covering services, routes, stores, and components.
-
-Repository: https://github.com/Pong-P00G/Ecommerce-app
------------------------------------------------
-```
 
 ### Claim → Evidence
 
