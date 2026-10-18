@@ -16,6 +16,11 @@ dist-ssr
 coverage
 *.local
 
+cdn/images/products/
+.cdn/images/user/pictures/
+.freebuff/
+.hintrc
+
 /cypress/videos/
 /cypress/screenshots/
 
