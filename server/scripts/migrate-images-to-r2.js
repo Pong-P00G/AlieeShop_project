@@ -24,6 +24,7 @@ import {
     PRODUCT_IMAGE_PREFIX,
     isStorageConfigured,
     uploadObject,
+    listObjects,
     publicUrlFor,
     describeStorageError,
     IMAGE_CONTENT_TYPES,
@@ -40,6 +41,7 @@ const log = {
     ok: (msg) => console.log(`   ✅ ${msg}`),
     skip: (msg) => console.log(`   ⏭️  ${msg}`),
     info: (msg) => console.log(`   ${msg}`),
+    warn: (msg) => console.log(`   ⚠️  ${msg}`),
 };
 
 async function uploadLocalFiles() {
@@ -83,19 +85,49 @@ async function rewriteStoredUrls() {
 
     if (rows.length === 0) {
         log.skip('No stored image URLs need rewriting.');
-        return 0;
+        return { rewritten: 0, missing: [] };
     }
+
+    // Only point a row at the bucket when the object is really there. Seeded
+    // rows can reference filenames that were never committed to
+    // cdn/images/products/, and rewriting those would replace a visible local
+    // path with a CDN URL that 404s forever.
+    const stored = new Set(
+        (await listObjects(PRODUCT_IMAGE_PREFIX)).map(({ key }) => path.basename(key))
+    );
+
+    let rewritten = 0;
+    const missing = [];
 
     for (const row of rows) {
         const filename = row.imageurl.split(LOCAL_PATH_SEGMENT).pop();
         if (!filename) continue;
 
+        if (!stored.has(filename)) {
+            missing.push({ imageid: row.imageid, filename, imageurl: row.imageurl });
+            continue;
+        }
+
         const url = publicUrlFor(`${PRODUCT_IMAGE_PREFIX}/${filename}`);
         await db.query('UPDATE productimages SET imageurl = $1 WHERE imageid = $2', [url, row.imageid]);
+        rewritten++;
     }
 
-    log.ok(`Rewrote ${rows.length} stored image URL(s).`);
-    return rows.length;
+    log.ok(`Rewrote ${rewritten} stored image URL(s).`);
+    return { rewritten, missing };
+}
+
+function reportMissing(missing) {
+    if (missing.length === 0) return;
+
+    console.log('\n' + '!'.repeat(52));
+    log.warn(`${missing.length} row(s) left unchanged — their file is not in the bucket:`);
+    for (const row of missing) {
+        log.info(`imageid=${row.imageid}  ${row.imageurl}`);
+    }
+    log.info('Add the missing files to cdn/images/products/ and re-run, or point');
+    log.info('the rows at an existing image (npm run images:audit lists them).');
+    console.log('!'.repeat(52));
 }
 
 async function main() {
@@ -112,10 +144,15 @@ async function main() {
     await uploadLocalFiles();
 
     log.step('2/2  Rewrite stored URLs');
-    await rewriteStoredUrls();
+    const { missing } = await rewriteStoredUrls();
+    reportMissing(missing);
 
     console.log('\n' + '='.repeat(52));
-    console.log('✅ Image migration complete.');
+    console.log(
+        missing.length === 0
+            ? '✅ Image migration complete.'
+            : `⚠️  Image migration finished with ${missing.length} unresolved row(s).`
+    );
     console.log('='.repeat(52));
 }
 

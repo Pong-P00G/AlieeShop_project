@@ -6,7 +6,6 @@ import { variantAPI } from '../../api/products/variantApi';
 import { discountAPI } from '../../api/products/discountApi.js';
 import { useRouter } from 'vue-router';
 import { useToast } from '../../composables/useToast.js';
-import { useMediaQuery } from '../../composables/useMediaQuery.js';
 import LazyImage from '../../components/LazyImage.vue';
 import {
     Plus,
@@ -24,9 +23,6 @@ import {
     Upload,
     CheckSquare,
     Square,
-    ChevronUp,
-    ChevronDown,
-    ChevronsUpDown,
     X,
     AlertTriangle,
     Filter,
@@ -40,10 +36,6 @@ import {
 
 const toast = useToast();
 const router = useRouter();
-// Render either the mobile card list or the desktop table — never both, so
-// product names aren't duplicated in the DOM. Falls back to the table where
-// matchMedia is unavailable (e.g. jsdom in tests).
-const isDesktop = useMediaQuery('(min-width: 1024px)', true);
 
 // ── State ────────────────────────────────────────────────────────────────────
 const products = ref([]);
@@ -70,7 +62,7 @@ const sortDirection = ref('desc');
 // Bulk selection
 const selectedIds = ref(new Set());
 // Per-page
-const pageSize = ref(10);
+const pageSize = ref(12);
 const currentPage = ref(1);
 const totalProducts = ref(0);
 
@@ -266,10 +258,6 @@ const previewImage = ref('');
 // ── Computed ─────────────────────────────────────────────────────────────────
 const totalPages = computed(() => Math.ceil(totalProducts.value / pageSize.value));
 
-const sortIcon = (field) => {
-    if (sortField.value !== field) return ChevronsUpDown;
-    return sortDirection.value === 'asc' ? ChevronUp : ChevronDown;
-};
 
 const statusStyles = {
     active:   'bg-accent/10 text-accent border-accent/20',
@@ -385,6 +373,15 @@ const toggleSort = (field) => {
         sortField.value = field;
         sortDirection.value = 'desc';
     }
+    currentPage.value = 1;
+    fetchProducts();
+};
+
+// Select-based sorting for the card layout, where there are no column headers.
+const changeSort = (value) => {
+    const [field, direction] = value.split(':');
+    sortField.value = field;
+    sortDirection.value = direction;
     currentPage.value = 1;
     fetchProducts();
 };
@@ -941,7 +938,7 @@ const cancelDeleteDiscount = () => {
 
 const formatDiscountDate = (d) => d ? new Date(d).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : '';
 
-const pageSizeOptions = [10, 25, 50, 100];
+const pageSizeOptions = [12, 24, 50, 100];
 
 // ── Lifecycle ────────────────────────────────────────────────────────────────
 onMounted(() => {
@@ -1148,11 +1145,10 @@ onMounted(() => {
                         </div>
                     </div>
 
-                    <!-- Skeleton Table -->
+                    <!-- Skeleton Cards -->
                     <div class="card-flat overflow-hidden">
-                        <!-- Toolbar -->
-                        <div class="px-4 sm:px-6 py-3 bg-neutral-50 border-b border-neutral-200">
-                            <div class="flex items-center justify-between">
+                        <div class="px-4 sm:px-6 py-3 border-b border-neutral-200 bg-neutral-50">
+                            <div class="flex items-center justify-between gap-4">
                                 <div class="h-5 w-40 skeleton-shimmer rounded"></div>
                                 <div class="flex gap-2">
                                     <div class="h-8 w-20 skeleton-shimmer rounded-lg"></div>
@@ -1160,28 +1156,25 @@ onMounted(() => {
                                 </div>
                             </div>
                         </div>
-                        <!-- Table Header -->
-                        <div class="px-4 sm:px-6 py-3.5 bg-neutral-50 border-b border-neutral-200">
-                            <div class="flex gap-6">
-                                <div v-for="i in 7" :key="'sk-th-' + i" class="h-3 w-16 skeleton-shimmer rounded" :class="{ 'w-24': i === 1 }"></div>
-                            </div>
-                        </div>
-                        <!-- Skeleton Rows -->
-                        <div v-for="i in 4" :key="'sk-row-' + i" class="border-b border-neutral-200 last:border-b-0">
-                            <div class="px-4 sm:px-6 py-4 flex items-center gap-4">
-                                <div class="w-5 h-5 skeleton-shimmer rounded"></div>
-                                <div class="w-12 h-12 skeleton-shimmer rounded-xl shrink-0"></div>
-                                <div class="flex-1 space-y-2">
-                                    <div class="h-4 w-48 skeleton-shimmer rounded"></div>
-                                    <div class="h-3 w-32 skeleton-shimmer rounded"></div>
+                        <div class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-3 p-3 sm:p-4">
+                            <div v-for="i in 6" :key="'sk-card-' + i" class="rounded-2xl border border-neutral-200 p-4 space-y-3">
+                                <div class="flex items-start gap-3">
+                                    <div class="w-5 h-5 skeleton-shimmer rounded"></div>
+                                    <div class="w-14 h-14 skeleton-shimmer rounded-xl shrink-0"></div>
+                                    <div class="flex-1 space-y-2">
+                                        <div class="h-4 w-40 skeleton-shimmer rounded"></div>
+                                        <div class="h-3 w-28 skeleton-shimmer rounded"></div>
+                                        <div class="h-4 w-16 skeleton-shimmer rounded"></div>
+                                    </div>
                                 </div>
-                                <div class="h-5 w-20 skeleton-shimmer rounded-full"></div>
-                                <div class="h-5 w-16 skeleton-shimmer rounded"></div>
-                                <div class="h-5 w-16 skeleton-shimmer rounded"></div>
-                                <div class="h-5 w-20 skeleton-shimmer rounded-full"></div>
-                                <div class="h-5 w-16 skeleton-shimmer rounded"></div>
-                                <div class="flex gap-2">
-                                    <div v-for="j in 3" :key="'sk-act-' + i + '-' + j" class="w-8 h-8 skeleton-shimmer rounded-full"></div>
+                                <div class="grid grid-cols-3 gap-2">
+                                    <div v-for="j in 3" :key="'sk-meta-' + i + '-' + j" class="space-y-1.5">
+                                        <div class="h-2.5 w-12 skeleton-shimmer rounded"></div>
+                                        <div class="h-4 w-16 skeleton-shimmer rounded"></div>
+                                    </div>
+                                </div>
+                                <div class="flex gap-1.5">
+                                    <div v-for="j in 3" :key="'sk-tag-' + i + '-' + j" class="h-4 w-14 skeleton-shimmer rounded"></div>
                                 </div>
                             </div>
                         </div>
@@ -1219,7 +1212,7 @@ onMounted(() => {
                 </button>
             </div>
 
-            <!-- Products Table -->
+            <!-- Products Grid -->
             <div v-else class="card-flat overflow-hidden">
                 <!-- Bulk Actions Toolbar -->
                 <div
@@ -1261,9 +1254,9 @@ onMounted(() => {
                     </div>
                 </div>
 
-                <!-- Table Controls (per-page, export, import) -->
+                <!-- Grid Controls (sort, select, per-page, export, import) -->
                 <div class="px-4 sm:px-6 py-3 bg-neutral-50 border-b border-neutral-200 flex items-center justify-between gap-4 flex-wrap">
-                    <div class="flex items-center gap-4 text-sm">
+                    <div class="flex items-center gap-3 sm:gap-4 text-sm flex-wrap">
                         <div class="flex items-center gap-2">
                             <span class="text-neutral-500 text-xs">Show</span>
                             <select
@@ -1276,6 +1269,29 @@ onMounted(() => {
                             </select>
                             <span class="text-neutral-500 text-xs">per page</span>
                         </div>
+                        <button
+                            @click="toggleSelectAll"
+                            class="inline-flex items-center gap-1.5 text-xs font-semibold text-neutral-500 hover:text-ink transition-colors"
+                        >
+                            <CheckSquare v-if="allSelectedOnPage" class="w-3.5 h-3.5 text-accent" />
+                            <Square v-else-if="someSelectedOnPage" class="w-3.5 h-3.5 text-accent opacity-60" />
+                            <Square v-else class="w-3.5 h-3.5 text-neutral-400" />
+                            Select page
+                        </button>
+                        <select
+                            :value="sortField + ':' + sortDirection"
+                            @change="changeSort($event.target.value)"
+                            class="bg-paper border border-neutral-200 rounded-lg px-2 py-1.5 text-xs font-semibold text-ink"
+                            aria-label="Sort products"
+                        >
+                            <option value="created_at:desc">Newest first</option>
+                            <option value="created_at:asc">Oldest first</option>
+                            <option value="product_name:asc">Name A–Z</option>
+                            <option value="product_name:desc">Name Z–A</option>
+                            <option value="base_price:asc">Price low–high</option>
+                            <option value="base_price:desc">Price high–low</option>
+                            <option value="product_status:asc">Status A–Z</option>
+                        </select>
                         <span class="text-neutral-400 hidden sm:inline">·</span>
                         <span class="text-neutral-500 text-xs hidden sm:inline">
                             {{ totalProducts }} total product{{ totalProducts !== 1 ? 's' : '' }}
@@ -1307,16 +1323,18 @@ onMounted(() => {
                     </div>
                 </div>
 
-                <!-- Mobile Card List (below lg) -->
-                <div v-if="!isDesktop" class="divide-y divide-neutral-100">
+                <!-- Product Cards -->
+                <div class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-3 p-3 sm:p-4">
                     <!-- eslint-disable-next-line vue/no-v-for-template-key -->
-                    <template v-for="product in products" :key="'m-' + product.product_id">
-                        <div
-                            class="px-4 py-3.5 transition-colors"
-                            :class="{ 'bg-accent/5': selectedIds.has(product.product_id) }"
+                    <template v-for="product in products" :key="'card-' + product.product_id">
+                        <article
+                            class="group flex flex-col rounded-2xl border bg-paper transition-all"
+                            :class="selectedIds.has(product.product_id)
+                                ? 'border-accent/60 bg-accent/5 shadow-sm'
+                                : 'border-neutral-200 hover:border-neutral-300 hover:shadow-sm'"
                         >
-                            <!-- Thumb + name + expand -->
-                            <div class="flex items-start gap-3">
+                            <!-- Card header -->
+                            <div class="flex items-start gap-3 p-3 sm:p-4">
                                 <button
                                     @click="toggleSelect(product.product_id)"
                                     class="p-1 mt-0.5 shrink-0"
@@ -1328,7 +1346,7 @@ onMounted(() => {
 
                                 <button
                                     @click="openImagePreview(product.thumbnail)"
-                                    class="w-11 h-11 bg-neutral-100 rounded-lg overflow-hidden shrink-0 border border-neutral-200/80 hover:border-accent transition-colors"
+                                    class="w-14 h-14 bg-neutral-100 rounded-xl overflow-hidden shrink-0 border border-neutral-200/80 hover:border-accent transition-colors"
                                 >
                                     <LazyImage
                                         v-if="product.thumbnail"
@@ -1343,16 +1361,45 @@ onMounted(() => {
                                 </button>
 
                                 <div class="min-w-0 flex-1">
-                                    <p class="font-semibold text-ink text-sm leading-tight truncate">{{ product.product_name }}</p>
-                                    <p class="text-[11px] text-neutral-400 mt-0.5 truncate">{{ truncateText(product.description, 48) }}</p>
-                                    <span class="inline-block mt-1 px-2 py-0.5 bg-neutral-100 text-neutral-500 rounded-md text-[10px] font-semibold uppercase tracking-wide">
+                                    <!-- Inline edit: name -->
+                                    <div
+                                        v-if="editingCell?.productId === product.product_id && editingCell?.field === 'product_name'"
+                                        class="flex items-center"
+                                        @click.stop
+                                    >
+                                        <input
+                                            ref="editInputRef"
+                                            v-model="editingCell.value"
+                                            type="text"
+                                            class="w-full px-2 py-1 text-sm font-semibold text-ink bg-paper border-2 border-accent rounded-lg outline-none"
+                                            @keydown="handleEditKeydown"
+                                            @blur="saveEditing"
+                                            @click.stop
+                                        />
+                                    </div>
+                                    <!-- Display: name -->
+                                    <div
+                                        v-else
+                                        class="group/name flex items-start gap-1.5 cursor-pointer"
+                                        @click.stop="startEditing(product, 'product_name')"
+                                        title="Click to edit name"
+                                    >
+                                        <p class="font-semibold text-ink text-sm leading-snug line-clamp-2">
+                                            {{ product.product_name }}
+                                        </p>
+                                        <Pencil class="w-3 h-3 mt-1 text-neutral-300 opacity-0 group-hover/name:opacity-100 transition-opacity shrink-0" />
+                                    </div>
+                                    <p class="text-[11px] text-neutral-400 mt-1 line-clamp-2">
+                                        {{ truncateText(product.description, 70) }}
+                                    </p>
+                                    <span class="inline-block mt-1.5 px-2 py-0.5 bg-neutral-100 text-neutral-500 rounded-md text-[10px] font-semibold uppercase tracking-wide">
                                         {{ product.category_name || 'N/A' }}
                                     </span>
                                 </div>
 
                                 <button
                                     @click="toggleExpandVariants(product.product_id)"
-                                    class="p-1.5 shrink-0 text-neutral-400 hover:text-ink transition-colors"
+                                    class="p-1.5 -mr-1 -mt-1 shrink-0 text-neutral-400 hover:text-ink transition-colors"
                                     :aria-label="'Toggle variants for ' + product.product_name"
                                 >
                                     <ChevronRight
@@ -1362,38 +1409,144 @@ onMounted(() => {
                                 </button>
                             </div>
 
-                            <!-- Price / Stock -->
-                            <div class="mt-3 flex items-center gap-5">
-                                <div class="flex items-baseline gap-1.5">
-                                    <span class="text-[10px] uppercase tracking-wide font-semibold text-neutral-400">Price</span>
-                                    <span class="text-sm font-bold text-ink tabular-nums">${{ formatPrice(product.base_price) }}</span>
+                            <!-- Price / stock / created -->
+                            <div class="grid grid-cols-3 gap-2 px-3 sm:px-4 pb-3">
+                                <div class="min-w-0">
+                                    <p class="text-[10px] uppercase tracking-wide font-semibold text-neutral-400">Price</p>
+                                    <div
+                                        v-if="editingCell?.productId === product.product_id && editingCell?.field === 'base_price'"
+                                        class="flex items-center mt-0.5"
+                                        @click.stop
+                                    >
+                                        <span class="text-sm font-bold text-ink mr-1">$</span>
+                                        <input
+                                            ref="editInputRef"
+                                            v-model="editingCell.value"
+                                            type="number"
+                                            step="0.01"
+                                            min="0.01"
+                                            class="w-full min-w-0 px-2 py-1 text-sm font-bold text-ink bg-paper border-2 border-accent rounded-lg outline-none tabular-nums"
+                                            @keydown="handleEditKeydown"
+                                            @blur="saveEditing"
+                                            @click.stop
+                                        />
+                                    </div>
+                                    <div
+                                        v-else
+                                        class="group/price inline-flex items-center gap-1.5 cursor-pointer mt-0.5"
+                                        @click.stop="startEditing(product, 'base_price')"
+                                        title="Click to edit price"
+                                    >
+                                        <span class="text-sm font-bold text-ink tabular-nums">${{ formatPrice(product.base_price) }}</span>
+                                        <Pencil class="w-3 h-3 text-neutral-300 opacity-0 group-hover/price:opacity-100 transition-opacity shrink-0" />
+                                    </div>
                                 </div>
-                                <div class="flex items-center gap-1.5">
-                                    <span class="text-[10px] uppercase tracking-wide font-semibold text-neutral-400">Stock</span>
-                                    <span class="text-sm font-bold text-ink tabular-nums">{{ product.total_stock || 0 }}</span>
-                                    <span :class="['px-1.5 py-0.5 rounded-md text-[9px] font-semibold border', stockStatus(product.total_stock).class]">
-                                        {{ stockStatus(product.total_stock).label }}
-                                    </span>
+                                <div>
+                                    <p class="text-[10px] uppercase tracking-wide font-semibold text-neutral-400">Stock</p>
+                                    <div class="mt-0.5 flex flex-wrap items-center gap-1.5">
+                                        <span class="font-bold text-ink tabular-nums text-sm">{{ product.total_stock || 0 }}</span>
+                                        <span :class="['px-1.5 py-0.5 rounded-md text-[9px] font-semibold border', stockStatus(product.total_stock).class]">
+                                            {{ stockStatus(product.total_stock).label }}
+                                        </span>
+                                    </div>
+                                </div>
+                                <div>
+                                    <p class="text-[10px] uppercase tracking-wide font-semibold text-neutral-400">Created</p>
+                                    <p class="mt-0.5 text-[11px] text-neutral-500 whitespace-nowrap">{{ formatDate(product.created_at) }}</p>
                                 </div>
                             </div>
 
                             <!-- Tags -->
-                            <div v-if="(getTags(product) || []).length > 0" class="mt-3 flex flex-wrap items-center gap-1.5">
-                                <span
-                                    v-for="tag in (getTags(product) || [])"
-                                    :key="tag"
-                                    class="px-2 py-0.5 bg-neutral-100 text-neutral-600 rounded-md text-[10px] font-semibold whitespace-nowrap"
-                                >
-                                    {{ tag }}
-                                </span>
+                            <div class="px-3 sm:px-4 pb-3" @click.stop>
+                                <div v-if="editingTags === product.product_id" class="space-y-2">
+                                    <div class="flex flex-wrap gap-1">
+                                        <button
+                                            v-for="tag in COMMON_TAGS"
+                                            :key="tag"
+                                            @click="toggleTag(product, tag)"
+                                            class="px-2 py-0.5 rounded-full text-[10px] font-bold border transition-all duration-150"
+                                            :class="(getTags(product) || []).includes(tag)
+                                                ? 'bg-accent text-white border-accent'
+                                                : 'bg-paper text-neutral-500 border-neutral-200 hover:border-accent hover:text-accent'"
+                                        >
+                                            {{ tag }}
+                                        </button>
+                                    </div>
+                                    <div class="flex items-center gap-1.5">
+                                        <input
+                                            ref="tagEditorRef"
+                                            v-model="editingTagsInput"
+                                            type="text"
+                                            placeholder="Add custom tag..."
+                                            class="flex-1 min-w-0 px-2 py-1 text-xs bg-paper border border-neutral-200 rounded-lg focus:border-accent focus:ring-1 focus:ring-accent/20 outline-none transition-all"
+                                            @keydown="handleTagKeydown($event, product)"
+                                        />
+                                        <button
+                                            @click="addCustomTag(product)"
+                                            class="px-2 py-1 bg-neutral-100 hover:bg-accent hover:text-white rounded-lg text-xs font-bold transition-all"
+                                            :disabled="!editingTagsInput.trim()"
+                                        >
+                                            Add
+                                        </button>
+                                    </div>
+                                    <div v-if="(getTags(product) || []).length > 0" class="flex flex-wrap gap-1 pt-1">
+                                        <span
+                                            v-for="tag in (getTags(product) || [])"
+                                            :key="tag"
+                                            class="inline-flex items-center gap-1 px-2 py-0.5 bg-ink text-paper rounded-full text-[10px] font-bold"
+                                        >
+                                            {{ tag }}
+                                            <button @click="toggleTag(product, tag)" class="hover:text-danger transition-colors">
+                                                <X class="w-2.5 h-2.5" />
+                                            </button>
+                                        </span>
+                                    </div>
+                                    <div class="flex gap-1.5 pt-1">
+                                        <button
+                                            @click="saveTags(product)"
+                                            :disabled="savingTags"
+                                            class="px-3 py-1 bg-accent text-white rounded-lg text-[10px] font-bold hover:bg-accent-600 transition-all disabled:opacity-50"
+                                        >
+                                            {{ savingTags ? 'Saving...' : 'Save' }}
+                                        </button>
+                                        <button
+                                            @click="closeTagEditor"
+                                            class="px-3 py-1 bg-neutral-100 text-neutral-600 rounded-lg text-[10px] font-bold hover:bg-neutral-200 transition-all"
+                                        >
+                                            Cancel
+                                        </button>
+                                    </div>
+                                </div>
+                                <div v-else class="flex flex-wrap items-center gap-1.5 min-h-6">
+                                    <template v-if="(getTags(product) || []).length > 0">
+                                        <span
+                                            v-for="tag in (getTags(product) || []).slice(0, 4)"
+                                            :key="tag"
+                                            class="px-2 py-0.5 bg-neutral-100 text-neutral-600 rounded-md text-[10px] font-semibold whitespace-nowrap"
+                                        >
+                                            {{ tag }}
+                                        </span>
+                                        <span v-if="(getTags(product) || []).length > 4" class="text-[10px] text-neutral-400 font-bold">
+                                            +{{ (getTags(product) || []).length - 4 }}
+                                        </span>
+                                    </template>
+                                    <span v-else class="text-xs text-neutral-300 italic">No tags</span>
+                                    <button
+                                        @click="openTagEditor(product)"
+                                        class="ml-0.5 p-1 rounded text-neutral-300 hover:text-accent hover:bg-accent/10 transition-all md:opacity-0 md:group-hover:opacity-100"
+                                        title="Edit tags"
+                                    >
+                                        <Pencil class="w-3 h-3" />
+                                    </button>
+                                </div>
                             </div>
 
-                            <!-- Status + actions -->
-                            <div class="mt-3 flex items-center justify-between gap-3">
+                            <!-- Footer: status + actions -->
+                            <div class="mt-auto flex items-center justify-between gap-2 border-t border-neutral-100 px-3 sm:px-4 py-2.5">
                                 <select
                                     :value="product.product_status"
                                     @change="quickStatusChange(product, $event.target.value)"
-                                    :class="['px-2 py-0.5 rounded-md text-[10px] font-semibold uppercase tracking-wide border appearance-none cursor-pointer pr-5', statusStyles[product.product_status] || 'bg-neutral-100 text-neutral-600']"
+                                    :class="['px-2 py-0.5 rounded-md text-[10px] font-semibold uppercase tracking-wide border appearance-none cursor-pointer pr-5 min-w-20', statusStyles[product.product_status] || 'bg-neutral-100 text-neutral-600']"
                                     aria-label="Change product status"
                                 >
                                     <option value="active">Active</option>
@@ -1402,20 +1555,32 @@ onMounted(() => {
                                     <option value="archived">Archived</option>
                                 </select>
                                 <div class="flex items-center gap-1">
-                                    <button @click="viewProduct(product)" class="btn-ghost p-1.5 rounded-lg text-neutral-400 hover:text-info transition-colors" title="View product">
+                                    <button
+                                        @click="viewProduct(product)"
+                                        class="btn-ghost p-1.5 rounded-lg text-neutral-400 hover:text-info transition-colors"
+                                        title="View product"
+                                    >
                                         <Eye class="w-4 h-4" />
                                     </button>
-                                    <button @click="openEditProduct(product)" class="btn-ghost p-1.5 rounded-lg text-neutral-400 hover:text-ink transition-colors" title="Edit product">
+                                    <button
+                                        @click="openEditProduct(product)"
+                                        class="btn-ghost p-1.5 rounded-lg text-neutral-400 hover:text-ink transition-colors"
+                                        title="Edit product"
+                                    >
                                         <Pencil class="w-4 h-4" />
                                     </button>
-                                    <button @click="openDeleteModal(product)" class="btn-ghost p-1.5 rounded-lg text-neutral-400 hover:text-danger transition-colors" title="Delete product">
+                                    <button
+                                        @click="openDeleteModal(product)"
+                                        class="btn-ghost p-1.5 rounded-lg text-neutral-400 hover:text-danger transition-colors"
+                                        title="Delete product"
+                                    >
                                         <Trash2 class="w-4 h-4" />
                                     </button>
                                 </div>
                             </div>
 
                             <!-- Expanded variants -->
-                            <div v-if="expandedProducts.has(product.product_id)" class="mt-3 bg-neutral-50 rounded-lg p-3">
+                            <div v-if="expandedProducts.has(product.product_id)" class="border-t border-neutral-100 bg-neutral-50/60 p-3 sm:p-4 space-y-2">
                                 <div v-if="loadingVariants.has(product.product_id)" class="flex items-center gap-2 text-xs text-neutral-500 py-2">
                                     <Loader2 class="w-4 h-4 animate-spin text-accent" />
                                     Loading variants...
@@ -1423,7 +1588,7 @@ onMounted(() => {
                                 <p v-else-if="!productVariants[product.product_id] || productVariants[product.product_id].length === 0" class="text-xs text-neutral-400 py-2">
                                     No variants defined for this product.
                                 </p>
-                                <div v-else class="space-y-2">
+                                <template v-else>
                                     <div
                                         v-for="variant in productVariants[product.product_id]"
                                         :key="variant.variant_id"
@@ -1431,9 +1596,36 @@ onMounted(() => {
                                     >
                                         <div class="flex items-center justify-between gap-2">
                                             <span class="text-xs font-mono text-ink truncate">{{ variant.sku || '—' }}</span>
-                                            <span class="text-xs font-bold text-ink tabular-nums whitespace-nowrap">
-                                                {{ variant.variant_price != null && variant.variant_price !== '' ? '$' + formatPrice(variant.variant_price) : '—' }}
-                                            </span>
+                                            <!-- Variant price (inline edit) -->
+                                            <div
+                                                v-if="editingVariantPrice?.variantId === variant.variant_id"
+                                                class="inline-flex items-center"
+                                                @click.stop
+                                            >
+                                                <span class="text-xs font-bold text-ink mr-1">$</span>
+                                                <input
+                                                    ref="variantPriceInputRef"
+                                                    v-model="editingVariantPrice.value"
+                                                    type="number"
+                                                    step="0.01"
+                                                    min="0"
+                                                    class="w-20 px-2 py-0.5 text-xs font-bold text-ink bg-paper border-2 border-accent rounded-lg outline-none tabular-nums"
+                                                    @keydown="handleVariantPriceKeydown"
+                                                    @blur="saveVariantPrice"
+                                                    @click.stop
+                                                />
+                                            </div>
+                                            <div
+                                                v-else
+                                                class="group/vprice inline-flex items-center gap-1 cursor-pointer justify-end"
+                                                @click.stop="startEditingVariantPrice(variant, product.product_id)"
+                                                title="Click to edit variant price"
+                                            >
+                                                <span class="text-xs font-bold text-ink tabular-nums">
+                                                    {{ variant.variant_price != null && variant.variant_price !== '' ? '$' + formatPrice(variant.variant_price) : '—' }}
+                                                </span>
+                                                <Pencil class="w-2.5 h-2.5 text-neutral-300 opacity-0 group-hover/vprice:opacity-100 transition-opacity shrink-0" />
+                                            </div>
                                         </div>
                                         <div class="mt-1.5 flex flex-wrap items-center gap-1.5">
                                             <span v-if="variant.variant_color" class="px-1.5 py-0.5 bg-neutral-100 rounded text-[10px] font-semibold text-neutral-700">{{ variant.variant_color }}</span>
@@ -1441,432 +1633,13 @@ onMounted(() => {
                                             <span v-if="variant.variant_storage" class="px-1.5 py-0.5 bg-neutral-100 rounded text-[10px] font-semibold text-neutral-700">{{ variant.variant_storage }}</span>
                                             <span class="ml-auto text-[10px] text-neutral-500">Stock: <strong class="text-ink tabular-nums">{{ variant.quantity || 0 }}</strong></span>
                                         </div>
+                                        <p class="mt-1 text-[10px] text-neutral-400">Reorder level: {{ variant.reorder_level || 5 }}</p>
                                     </div>
-                                </div>
+                                </template>
                             </div>
-                        </div>
+                        </article>
                     </template>
                 </div>
-
-                <div v-else class="overflow-x-auto">
-                    <table class="w-full min-w-225">
-                        <thead class="bg-neutral-50/60 border-b border-neutral-200">
-                            <tr>
-                                <!-- Checkbox -->
-                                <!-- Expand -->
-                                <th class="px-2 sm:px-3 py-3 w-10"></th>
-                                <!-- Checkbox -->
-                                <th class="px-2 sm:px-3 py-3 w-12">
-                                    <button @click="toggleSelectAll" class="p-0.5">
-                                        <CheckSquare v-if="allSelectedOnPage" class="w-4 h-4 text-accent" />
-                                        <Square v-else-if="someSelectedOnPage" class="w-4 h-4 text-accent opacity-60" />
-                                        <Square v-else class="w-4 h-4 text-neutral-300 hover:text-neutral-500 transition-colors" />
-                                    </button>
-                                </th>
-                                <!-- Product -->
-                                <th class="px-4 sm:px-5 py-3 text-left">
-                                    <button @click="toggleSort('product_name')" class="inline-flex items-center gap-1.5 text-[10px] font-semibold text-neutral-400 uppercase tracking-[0.12em] hover:text-ink transition-colors">
-                                        Product
-                                        <component :is="sortIcon('product_name')" class="w-3 h-3" />
-                                    </button>
-                                </th>
-                                <!-- Category -->
-                                <th class="px-4 sm:px-5 py-3 text-left text-[10px] font-semibold text-neutral-400 uppercase tracking-[0.12em]">
-                                    Category
-                                </th>
-                                <!-- Price -->
-                                <th class="px-4 sm:px-5 py-3 text-left">
-                                    <button @click="toggleSort('base_price')" class="inline-flex items-center gap-1.5 text-[10px] font-semibold text-neutral-400 uppercase tracking-[0.12em] hover:text-ink transition-colors">
-                                        Price
-                                        <component :is="sortIcon('base_price')" class="w-3 h-3" />
-                                    </button>
-                                </th>
-                                <!-- Stock -->
-                                <th class="px-4 sm:px-5 py-3 text-left text-[10px] font-semibold text-neutral-400 uppercase tracking-[0.12em]">
-                                    Stock
-                                </th>
-                                <!-- Tags -->
-                                <th class="px-4 sm:px-5 py-3 text-left text-[10px] font-semibold text-neutral-400 uppercase tracking-[0.12em]">
-                                    Tags
-                                </th>
-                                <!-- Status -->
-                                <th class="px-4 sm:px-5 py-3 text-left">
-                                    <button @click="toggleSort('product_status')" class="inline-flex items-center gap-1.5 text-[10px] font-semibold text-neutral-400 uppercase tracking-[0.12em] hover:text-ink transition-colors">
-                                        Status
-                                        <component :is="sortIcon('product_status')" class="w-3 h-3" />
-                                    </button>
-                                </th>
-                                <!-- Created -->
-                                <th class="px-4 sm:px-5 py-3 text-left">
-                                    <button @click="toggleSort('created_at')" class="inline-flex items-center gap-1.5 text-[10px] font-semibold text-neutral-400 uppercase tracking-[0.12em] hover:text-ink transition-colors">
-                                        Created
-                                        <component :is="sortIcon('created_at')" class="w-3 h-3" />
-                                    </button>
-                                </th>
-                                <!-- Actions -->
-                                <th class="px-4 sm:px-5 py-3 text-right text-[10px] font-semibold text-neutral-400 uppercase tracking-[0.12em]">
-                                    Actions
-                                </th>
-                            </tr>
-                        </thead>
-                        <tbody class="divide-y divide-neutral-100">
-                            <!-- eslint-disable-next-line vue/no-v-for-template-key -->
-                            <template v-for="product in products" :key="product.product_id">
-                            <!-- Product Row -->
-                            <tr
-                                class="hover:bg-neutral-50/70 transition-colors group cursor-pointer"
-                                :class="{
-                                    'bg-accent/5': selectedIds.has(product.product_id),
-                                    'border-b-0': expandedProducts.has(product.product_id)
-                                }"
-                                @click="toggleExpandVariants(product.product_id)"
-                            >
-                                <!-- Expand Toggle -->
-                                <td class="px-2 sm:px-3 py-2.5 w-10">
-                                    <ChevronRight
-                                        class="w-4 h-4 text-neutral-400 transition-transform duration-200"
-                                        :class="{ 'rotate-90': expandedProducts.has(product.product_id) }"
-                                    />
-                                </td>
-
-                                <!-- Checkbox -->
-                                <td class="px-2 sm:px-3 py-2.5" @click.stop>
-                                    <button @click="toggleSelect(product.product_id)" class="p-0.5">
-                                        <CheckSquare v-if="selectedIds.has(product.product_id)" class="w-4 h-4 text-accent" />
-                                        <Square v-else class="w-4 h-4 text-neutral-300 group-hover:text-neutral-400 transition-colors" />
-                                    </button>
-                                </td>
-
-                                <!-- Product -->
-                                <td class="px-4 sm:px-5 py-2.5">
-                                    <div class="flex items-center gap-3">
-                                        <button
-                                            @click="openImagePreview(product.thumbnail)"
-                                            class="group w-9 h-9 sm:w-10 sm:h-10 bg-neutral-100 rounded-lg overflow-hidden shrink-0 border border-neutral-200/80 hover:border-accent transition-colors relative"
-                                        >
-                                            <LazyImage
-                                                v-if="product.thumbnail"
-                                                :src="product.thumbnail"
-                                                :alt="product.product_name"
-                                                wrapper-class="w-full h-full"
-                                                img-class="w-full h-full object-cover"
-                                            />
-                                            <div
-                                                v-else
-                                                class="w-full h-full flex items-center justify-center"
-                                            >
-                                                <ImageIcon class="w-5 h-5 text-neutral-300" />
-                                            </div>
-                                            <div class="hidden group-hover:flex absolute inset-0 bg-ink/40 items-center justify-center rounded-lg transition-all">
-                                                <Eye class="w-4 h-4 text-paper" />
-                                            </div>
-                                        </button>
-                                        <div class="min-w-0 flex-1">
-                                            <!-- Inline Edit: Name -->
-                                            <div v-if="editingCell?.productId === product.product_id && editingCell?.field === 'product_name'"
-                                                 class="flex items-center" @click.stop>
-                                                <input
-                                                    ref="editInputRef"
-                                                    v-model="editingCell.value"
-                                                    type="text"
-                                                    class="w-full px-2 py-1 text-sm font-semibold text-ink bg-paper border-2 border-accent rounded-lg outline-none"
-                                                    @keydown="handleEditKeydown"
-                                                    @blur="saveEditing"
-                                                    @click.stop
-                                                />
-                                            </div>
-                                            <!-- Display: Name -->
-                                            <div v-else
-                                                 class="group/name flex items-center gap-1.5 cursor-pointer"
-                                                 @click.stop="startEditing(product, 'product_name')"
-                                                 title="Click to edit name">
-                                                <p class="font-semibold text-ink text-sm leading-tight truncate max-w-25 sm:max-w-62">
-                                                    {{ product.product_name }}
-                                                </p>
-                                                <Pencil class="w-3 h-3 text-neutral-300 opacity-0 group-hover/name:opacity-100 transition-opacity shrink-0" />
-                                            </div>
-                                            <p class="text-[11px] text-neutral-400 mt-0.5 truncate max-w-25 sm:max-w-62">
-                                                {{ truncateText(product.description, 40) }}
-                                            </p>
-                                        </div>
-                                    </div>
-                                </td>
-
-                                <!-- Category -->
-                                <td class="px-4 sm:px-5 py-2.5">
-                                    <span class="px-2 py-0.5 bg-neutral-100 text-neutral-500 rounded-md text-[10px] font-semibold uppercase tracking-wide whitespace-nowrap">
-                                        {{ product.category_name || 'N/A' }}
-                                    </span>
-                                </td>
-
-                                <!-- Price -->
-                                <td class="px-4 sm:px-5 py-2.5">
-                                    <!-- Inline Edit: Price -->
-                                    <div v-if="editingCell?.productId === product.product_id && editingCell?.field === 'base_price'"
-                                         class="flex items-center" @click.stop>
-                                        <span class="text-sm font-bold text-ink mr-1">$</span>
-                                        <input
-                                            ref="editInputRef"
-                                            v-model="editingCell.value"
-                                            type="number"
-                                            step="0.01"
-                                            min="0.01"
-                                            class="w-24 px-2 py-1 text-sm font-bold text-ink bg-paper border-2 border-accent rounded-lg outline-none tabular-nums"
-                                            @keydown="handleEditKeydown"
-                                            @blur="saveEditing"
-                                            @click.stop
-                                        />
-                                    </div>
-                                    <!-- Display: Price -->
-                                    <div v-else
-                                         class="group/price inline-flex items-center gap-1.5 cursor-pointer"
-                                         @click.stop="startEditing(product, 'base_price')"
-                                         title="Click to edit price">
-                                        <span class="font-bold text-ink tabular-nums">${{ formatPrice(product.base_price) }}</span>
-                                        <Pencil class="w-3 h-3 text-neutral-300 opacity-0 group-hover/price:opacity-100 transition-opacity shrink-0" />
-                                    </div>
-                                </td>
-
-                                <!-- Stock -->
-                                <td class="px-4 sm:px-5 py-2.5">
-                                    <div class="flex items-center gap-2">
-                                        <span class="font-bold text-ink tabular-nums text-sm">{{ product.total_stock || 0 }}</span>
-                                        <span
-                                            :class="['px-2 py-0.5 rounded-md text-[10px] font-semibold border', stockStatus(product.total_stock).class]"
-                                            class="hidden sm:inline"
-                                        >
-                                            {{ stockStatus(product.total_stock).label }}
-                                        </span>
-                                    </div>
-                                </td>
-
-                                <!-- Tags -->
-                                <td class="px-4 sm:px-6 py-3 max-w-40" @click.stop>
-                                    <!-- Inline Tag Editor -->
-                                    <div v-if="editingTags === product.product_id" class="space-y-2 min-w-52">
-                                        <!-- Common tag toggles -->
-                                        <div class="flex flex-wrap gap-1">
-                                            <button
-                                                v-for="tag in COMMON_TAGS"
-                                                :key="tag"
-                                                @click="toggleTag(product, tag)"
-                                                class="px-2 py-0.5 rounded-full text-[10px] font-bold border transition-all duration-150"
-                                                :class="(getTags(product) || []).includes(tag)
-                                                    ? 'bg-accent text-white border-accent'
-                                                    : 'bg-paper text-neutral-500 border-neutral-200 hover:border-accent hover:text-accent'"
-                                            >
-                                                {{ tag }}
-                                            </button>
-                                        </div>
-                                        <!-- Custom tag input -->
-                                        <div class="flex items-center gap-1.5">
-                                            <input
-                                                ref="tagEditorRef"
-                                                v-model="editingTagsInput"
-                                                type="text"
-                                                placeholder="Add custom tag..."
-                                                class="flex-1 px-2 py-1 text-xs bg-paper border border-neutral-200 rounded-lg focus:border-accent focus:ring-1 focus:ring-accent/20 outline-none transition-all"
-                                                @keydown="handleTagKeydown($event, product)"
-                                            />
-                                            <button
-                                                @click="addCustomTag(product)"
-                                                class="px-2 py-1 bg-neutral-100 hover:bg-accent hover:text-white rounded-lg text-xs font-bold transition-all"
-                                                :disabled="!editingTagsInput.trim()"
-                                            >
-                                                Add
-                                            </button>
-                                        </div>
-                                        <!-- Current tags preview -->
-                                        <div v-if="(getTags(product) || []).length > 0" class="flex flex-wrap gap-1 pt-1">
-                                            <span
-                                                v-for="tag in (getTags(product) || [])"
-                                                :key="tag"
-                                                class="inline-flex items-center gap-1 px-2 py-0.5 bg-ink text-paper rounded-full text-[10px] font-bold"
-                                            >
-                                                {{ tag }}
-                                                <button @click="toggleTag(product, tag)" class="hover:text-danger transition-colors">
-                                                    <X class="w-2.5 h-2.5" />
-                                                </button>
-                                            </span>
-                                        </div>
-                                        <!-- Actions -->
-                                        <div class="flex gap-1.5 pt-1">
-                                            <button
-                                                @click="saveTags(product)"
-                                                :disabled="savingTags"
-                                                class="px-3 py-1 bg-accent text-white rounded-lg text-[10px] font-bold hover:bg-accent-600 transition-all disabled:opacity-50"
-                                            >
-                                                {{ savingTags ? 'Saving...' : 'Save' }}
-                                            </button>
-                                            <button
-                                                @click="closeTagEditor"
-                                                class="px-3 py-1 bg-neutral-100 text-neutral-600 rounded-lg text-[10px] font-bold hover:bg-neutral-200 transition-all"
-                                            >
-                                                Cancel
-                                            </button>
-                                        </div>
-                                    </div>
-                                    <!-- Display tags as chips -->
-                                    <div v-else class="flex items-center gap-1.5 flex-wrap">
-                                        <template v-if="(getTags(product) || []).length > 0">
-                                            <span
-                                                v-for="tag in (getTags(product) || []).slice(0, 3)"
-                                                :key="tag"
-                                                class="px-2 py-0.5 bg-neutral-100 text-neutral-600 rounded-md text-[10px] font-semibold whitespace-nowrap"
-                                            >
-                                                {{ tag }}
-                                            </span>
-                                            <span
-                                                v-if="(getTags(product) || []).length > 3"
-                                                class="text-[10px] text-neutral-400 font-bold"
-                                            >
-                                                +{{ (getTags(product) || []).length - 3 }}
-                                            </span>
-                                        </template>
-                                        <span v-else class="text-xs text-neutral-300 italic">—</span>
-                                        <button
-                                            @click="openTagEditor(product)"
-                                            class="ml-0.5 p-0.5 rounded text-neutral-300 hover:text-accent hover:bg-accent/10 transition-all opacity-0 group-hover:opacity-100"
-                                            title="Edit tags"
-                                        >
-                                            <Pencil class="w-3 h-3" />
-                                        </button>
-                                    </div>
-                                </td>
-
-                                <!-- Status (with quick toggle) -->
-                                <td class="px-4 sm:px-5 py-2.5">
-                                    <select
-                                        :value="product.product_status"
-                                        @change="quickStatusChange(product, $event.target.value)"
-                                        :class="['px-2 py-0.5 rounded-md text-[10px] font-semibold uppercase tracking-wide border appearance-none cursor-pointer pr-5 min-w-20', statusStyles[product.product_status] || 'bg-neutral-100 text-neutral-600']"
-                                    >
-                                        <option value="active">Active</option>
-                                        <option value="draft">Draft</option>
-                                        <option value="inactive">Inactive</option>
-                                        <option value="archived">Archived</option>
-                                    </select>
-                                </td>
-
-                                <!-- Created -->
-                                <td class="px-4 sm:px-5 py-2.5">
-                                    <span class="text-[11px] text-neutral-400 whitespace-nowrap">{{ formatDate(product.created_at) }}</span>
-                                </td>
-
-                                <!-- Actions -->
-                                <td class="px-4 sm:px-6 py-3 text-right">
-                                    <div class="flex items-center justify-end gap-1">
-                                        <button
-                                            @click="viewProduct(product)"
-                                            class="btn-ghost p-1.5 rounded-lg text-neutral-400 hover:text-info transition-colors"
-                                            title="View product"
-                                        >
-                                            <Eye class="w-3.5 h-3.5" />
-                                        </button>
-                                        <button
-                                            @click="openEditProduct(product)"
-                                            class="btn-ghost p-1.5 rounded-lg text-neutral-400 hover:text-ink transition-colors"
-                                            title="Edit product"
-                                        >
-                                            <Pencil class="w-3.5 h-3.5" />
-                                        </button>
-                                        <button
-                                            @click="openDeleteModal(product)"
-                                            class="btn-ghost p-1.5 rounded-lg text-neutral-400 hover:text-danger transition-colors"
-                                            title="Delete product"
-                                        >
-                                            <Trash2 class="w-3.5 h-3.5" />
-                                        </button>
-                                    </div>
-                                </td>
-                            </tr>
-                            <!-- Variant Rows (expandable) -->
-                            <tr v-if="expandedProducts.has(product.product_id)" class="border-b border-neutral-100">
-                                <td colspan="10" class="px-4 sm:px-5 py-0 bg-neutral-50/40">
-                                    <div class="py-4 pl-12 sm:pl-14">
-                                        <!-- Loading variants -->
-                                        <div v-if="loadingVariants.has(product.product_id)" class="flex items-center gap-3 text-sm text-neutral-500 py-3">
-                                            <Loader2 class="w-4 h-4 animate-spin text-accent" />
-                                            Loading variants...
-                                        </div>
-                                        <!-- No variants -->
-                                        <div v-else-if="!productVariants[product.product_id] || productVariants[product.product_id].length === 0" class="text-sm text-neutral-400 py-3">
-                                            No variants defined for this product.
-                                        </div>
-                                        <!-- Variants table -->
-                                        <div v-else class="overflow-x-auto">
-                                            <table class="w-full min-w-125">
-                                                <thead>
-                                                    <tr class="text-[10px] font-semibold uppercase tracking-[0.12em] text-neutral-400">
-                                                        <th class="px-3 py-2 text-left">SKU</th>
-                                                        <th class="px-3 py-2 text-left">Options</th>
-                                                        <th class="px-3 py-2 text-right">Price</th>
-                                                        <th class="px-3 py-2 text-right">Stock</th>
-                                                        <th class="px-3 py-2 text-right">Reorder Level</th>
-                                                    </tr>
-                                                </thead>
-                                                <tbody class="divide-y divide-neutral-100">
-                                                    <tr v-for="variant in productVariants[product.product_id]" :key="variant.variant_id" class="hover:bg-neutral-50 transition-colors">
-                                                        <td class="px-3 py-2.5">
-                                                            <span class="text-sm font-mono text-ink">{{ variant.sku || '—' }}</span>
-                                                        </td>
-                                                        <td class="px-3 py-2.5">
-                                                            <div class="flex items-center gap-2">
-                                                                <span v-if="variant.variant_color" class="px-2 py-0.5 bg-neutral-100 rounded text-[10px] font-semibold text-neutral-700">
-                                                                    {{ variant.variant_color }}
-                                                                </span>
-                                                                <span v-if="variant.variant_size" class="px-2 py-0.5 bg-neutral-100 rounded text-[10px] font-semibold text-neutral-700">
-                                                                    {{ variant.variant_size }}
-                                                                </span>
-                                                                <span v-if="variant.variant_storage" class="px-2 py-0.5 bg-neutral-100 rounded text-[10px] font-semibold text-neutral-700">
-                                                                    {{ variant.variant_storage }}
-                                                                </span>
-                                                            </div>
-                                                        </td>
-                                                        <!-- Variant Price (Inline Edit) -->
-                                                        <td class="px-3 py-2.5 text-right">
-                                                            <div v-if="editingVariantPrice?.variantId === variant.variant_id" class="inline-flex items-center" @click.stop>
-                                                                <span class="text-sm font-bold text-ink mr-1">$</span>
-                                                                <input
-                                                                    ref="variantPriceInputRef"
-                                                                    v-model="editingVariantPrice.value"
-                                                                    type="number"
-                                                                    step="0.01"
-                                                                    min="0"
-                                                                    class="w-22 px-2 py-1 text-sm font-bold text-ink bg-paper border-2 border-accent rounded-lg outline-none tabular-nums"
-                                                                    @keydown="handleVariantPriceKeydown"
-                                                                    @blur="saveVariantPrice"
-                                                                    @click.stop
-                                                                />
-                                                            </div>
-                                                            <div v-else
-                                                                 class="group/price inline-flex items-center gap-1.5 cursor-pointer justify-end"
-                                                                 @click.stop="startEditingVariantPrice(variant, product.product_id)"
-                                                                 title="Click to edit variant price">
-                                                                <span class="text-sm font-bold text-ink tabular-nums">
-                                                                    {{ variant.variant_price != null && variant.variant_price !== '' ? '$' + formatPrice(variant.variant_price) : '—' }}
-                                                                </span>
-                                                                <Pencil class="w-3 h-3 text-neutral-300 opacity-0 group-hover/price:opacity-100 transition-opacity shrink-0" />
-                                                            </div>
-                                                        </td>
-                                                        <td class="px-3 py-2.5 text-right">
-                                                            <span class="font-bold text-ink tabular-nums text-sm">{{ variant.quantity || 0 }}</span>
-                                                        </td>
-                                                        <td class="px-3 py-2.5 text-right">
-                                                            <span class="text-sm text-neutral-600 tabular-nums">{{ variant.reorder_level || 5 }}</span>
-                                                        </td>
-                                                    </tr>
-                                                </tbody>
-                                            </table>
-                                        </div>
-                                    </div>
-                                </td>
-                            </tr>
-                            </template>
-                        </tbody>
-                    </table>
-                </div>
-
                 <!-- Empty State (kept as fallback) -->
 
                 <!-- Pagination -->

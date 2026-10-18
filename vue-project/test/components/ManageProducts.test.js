@@ -262,6 +262,56 @@ describe('ManageProducts — force delete flow', () => {
         expect(screen.getByText('Delete')).toBeTruthy();
     });
 
+    it('renders each product once, as a card, with no table markup', async () => {
+        productAPI.getPaginatedProduct.mockResolvedValue({
+            items: [
+                { ...sampleProduct, product_id: 1, product_name: 'Product A' },
+                { ...sampleProduct, product_id: 2, product_name: 'Product B' },
+            ],
+            totalItems: 2,
+            page: 1,
+            pageSize: 10,
+            totalPages: 1,
+        });
+
+        const { container } = render(ManageProducts);
+
+        await screen.findByText('Product A');
+
+        expect(container.querySelectorAll('table')).toHaveLength(0);
+        expect(container.querySelectorAll('article')).toHaveLength(2);
+        expect(screen.getAllByText('Product A')).toHaveLength(1);
+        expect(screen.getAllByText('Product B')).toHaveLength(1);
+    });
+
+    it('exposes a sort control that refetches with the chosen field and direction', async () => {
+        render(ManageProducts);
+
+        await screen.findByText('Force Delete Test Product');
+
+        await fireEvent.update(screen.getByLabelText('Sort products'), 'product_name:asc');
+
+        await waitFor(() => {
+            const params = productAPI.getPaginatedProduct.mock.calls.at(-1)[0];
+            expect(params.sortField).toBe('product_name');
+            expect(params.sortDirection).toBe('asc');
+        });
+    });
+
+    it('offers a select-page control instead of a table header checkbox', async () => {
+        render(ManageProducts);
+
+        await screen.findByText('Force Delete Test Product');
+
+        // No bulk-action toolbar until something is selected.
+        expect(screen.queryByText('selected')).toBeNull();
+
+        await fireEvent.click(screen.getByText('Select page'));
+
+        // The bulk toolbar now reports the selected count.
+        expect(await screen.findByText('selected')).toBeTruthy();
+    });
+
     it('resets forceDelete when opening modal for a different product', async () => {
         // Add a second product
         productAPI.getPaginatedProduct.mockResolvedValue({
