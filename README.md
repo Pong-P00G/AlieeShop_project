@@ -5,6 +5,10 @@ A modern, full-featured e-commerce platform built with **Vue 3**, **Express**, a
 > **New to the codebase?** Start with [PROJECT_OVERVIEW.md](./PROJECT_OVERVIEW.md) for a guided tour of the domain, the request lifecycle, and where each piece of the system lives.
 >
 > **Want the *why* behind the *how*?** [EXPLAIN.md](./EXPLAIN.md) is the deep dive — tech-stack rationale, every keyword and concept explained, and the auth, CSRF, migration and notification mechanics traced end to end.
+>
+> **Want the tables and their relationships?** [ER_DIAGRAM.md](./ER_DIAGRAM.md) is the entity-relationship diagram of the whole schema, table by table.
+>
+> **Want to follow a request end to end?** [FLOW_CHART.md](./FLOW_CHART.md) charts the request pipeline, auth and refresh, checkout, order status and stock alerts.
 
 ### In Short
 

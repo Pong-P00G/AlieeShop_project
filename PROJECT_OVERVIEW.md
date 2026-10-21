@@ -177,6 +177,10 @@ the layers cooperate:
 The layering is consistent, which makes it a reliable map: if you know which
 layer a concern belongs to, you know which file to open.
 
+[FLOW_CHART.md](./FLOW_CHART.md) draws this pipeline, the auth and refresh
+cycle, checkout → order → payment, order status transitions, and the stock
+notification fan-out as flow charts, with the file behind every stage.
+
 ---
 
 ## Repository Layout
@@ -324,6 +328,9 @@ the migrations, and seeds sample products. That baseline file exists because the
 migrations are strictly additive — they add feature tables and columns but never
 created the core tables (`products`, `users`, `category`, `orders`, `cart`,
 `stock`, …), so on their own they cannot build a database that the app can use.
+
+The full entity-relationship diagram — every table, its columns and keys, and
+the delete rules between them — lives in [ER_DIAGRAM.md](./ER_DIAGRAM.md).
 
 Core concepts:
 
